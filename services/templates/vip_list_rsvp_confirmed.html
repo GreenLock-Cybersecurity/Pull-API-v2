@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light dark">
+    <title>Confirmado - Estás en la Lista - Pull</title>
+    <style>
+        :root { color-scheme: light dark; }
+        @media (prefers-color-scheme: dark) {
+            .dark-mode-bg { background-color: #0f0f15 !important; }
+            .dark-mode-text { color: #ffffff !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a12 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
+
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        Confirmado: Estás en la lista para {{.event_name}}. Te avisaremos cuando se abra el pago.
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0a0a12 !important; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="650" cellpadding="0" cellspacing="0" border="0" style="background-color: #0f0f15 !important; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6); border: 1px solid rgba(16, 185, 129, 0.15); max-width: 650px;">
+
+                    <!-- Logo Header -->
+                    <tr>
+                        <td style="padding: 48px 48px 40px; text-align: center; background-color: rgba(16, 185, 129, 0.08) !important; border-bottom: 1px solid rgba(16, 185, 129, 0.15);">
+                            <img src="https://pullevents.com/public/logo.png" alt="Pull Logo" width="200" height="50" style="height: 50px; width: auto; display: block; margin: 0 auto;" />
+                        </td>
+                    </tr>
+
+                    <!-- Success Banner -->
+                    <tr>
+                        <td style="padding: 48px 48px 32px; text-align: center; background-color: #141418 !important;">
+                            <h2 style="margin: 0 0 12px; color: #10b981 !important; font-size: 32px; font-weight: 700;">
+                                Asistencia Confirmada
+                            </h2>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.65) !important; font-size: 17px;">
+                                Tu lugar en la lista ha sido reservado
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Greeting -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <p style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px;">
+                                Hola <strong style="color: rgb(16, 185, 129) !important;">{{.guest_name}}</strong>,
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 15px; line-height: 1.7;">
+                                Tu asistencia para <strong style="color: rgb(167, 139, 250) !important;">{{.event_name}}</strong> ha sido confirmada exitosamente.
+                                {{if .added_by}}Has sido agregado a la lista por {{.added_by}}.{{end}}
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Event Details Card -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px;">
+                                <tr>
+                                    <td style="padding: 24px 24px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                        <p style="margin: 0 0 4px; color: rgba(255, 255, 255, 0.5) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                            Detalles del Evento
+                                        </p>
+                                        <h3 style="margin: 0; color: #ffffff !important; font-size: 22px; font-weight: 700;">
+                                            {{.event_name}}
+                                        </h3>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 18px 24px;">
+                                        <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px;">Fecha</p>
+                                        <p style="margin: 0; color: #ffffff !important; font-size: 15px;">{{.event_date}}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Price Info -->
+                    {{if .price_with_fee}}
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(217, 70, 239, 0.1)) !important; border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td align="center">
+                                        <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.6) !important; font-size: 13px;">
+                                            Precio estimado
+                                        </p>
+                                        <p style="margin: 0; color: #ffffff !important; font-size: 28px; font-weight: 700;">
+                                            {{.currency}} {{.price_with_fee}}
+                                        </p>
+                                        <p style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px;">
+                                            per Person Consumibles (incluye costes de gestión)
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    {{end}}
+
+                    <!-- What's Next -->
+                    <tr>
+                        <td style="padding: 0 48px 40px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: rgba(139, 92, 246, 0.05) !important; border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px; font-weight: 700;">
+                                            Próximos Pasos
+                                        </p>
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px; line-height: 1.7;">
+                                            Cuando el anfitrión cierre la lista, recibirás un correo con el enlace de pago y la fecha límite para completarlo. Una vez realizado el pago, recibirás tu entrada con código QR.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 48px; text-align: center; background-color: rgba(0, 0, 0, 0.4) !important; border-top: 1px solid rgba(255, 255, 255, 0.04);">
+                            <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.4) !important; font-size: 12px;">
+                                © 2024 Pull. Todos los derechos reservados.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

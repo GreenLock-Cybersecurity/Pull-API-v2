@@ -1,0 +1,270 @@
+<!-- templates/guest_list_approved.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+    <title>Estas en la Lista - Pull</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            supported-color-schemes: light dark;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .dark-mode-bg {
+                background-color: #0f0f15 !important;
+            }
+            .dark-mode-text {
+                color: #ffffff !important;
+            }
+            .dark-mode-text-secondary {
+                color: rgba(255, 255, 255, 0.75) !important;
+            }
+            .dark-mode-border {
+                border-color: rgba(52, 211, 153, 0.15) !important;
+            }
+        }
+
+        [data-ogsc] {
+            color: inherit !important;
+        }
+
+        u + .body {
+            background: #0a0a12 !important;
+        }
+    </style>
+</head>
+<body class="body" style="margin: 0; padding: 0; background-color: #0a0a12 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        ¡Estas en la lista! Tu registro para {{.event_name}} ha sido aprobado.
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: #0a0a12 !important; padding: 40px 20px; min-height: 100vh;">
+        <tr>
+            <td align="center">
+
+                <table width="650" cellpadding="0" cellspacing="0" border="0" role="presentation" class="dark-mode-bg dark-mode-border" style="background-color: #0f0f15 !important; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6); border: 1px solid rgba(52, 211, 153, 0.2); max-width: 650px;">
+
+                    <!-- Logo Header -->
+                    <tr>
+                        <td style="padding: 48px 48px 40px; text-align: center; background-color: rgba(52, 211, 153, 0.08) !important; border-bottom: 1px solid rgba(52, 211, 153, 0.15);">
+                            <img src="https://pullevents.com/public/logo.png" alt="Pull Logo" width="200" height="50" style="height: 50px; width: auto; display: block; margin: 0 auto; max-width: 200px;" />
+                        </td>
+                    </tr>
+
+                    <!-- Success Title -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 48px 48px 32px; text-align: center; background-color: #141418 !important;">
+                            <div style="width: 80px; height: 80px; margin: 0 auto 24px; background: linear-gradient(135deg, rgba(52, 211, 153, 0.2), rgba(16, 185, 129, 0.2)); border: 3px solid rgba(52, 211, 153, 0.4); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 40px; line-height: 80px;">&#10003;</span>
+                            </div>
+                            <h2 class="dark-mode-text" style="margin: 0 0 12px; color: #ffffff !important; font-size: 32px; font-weight: 700; letter-spacing: -0.8px;">
+                                ¡Estas en la Lista!
+                            </h2>
+                            <p style="margin: 0; color: rgb(52, 211, 153) !important; font-size: 17px; font-weight: 500; line-height: 1.5;">
+                                Tu solicitud ha sido aprobada
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Greeting -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <p class="dark-mode-text" style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px; font-weight: 400; line-height: 1.6;">
+                                Hola <strong style="color: rgb(52, 211, 153) !important; font-weight: 600;">{{.name}}</strong>,
+                            </p>
+                            <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 15px; font-weight: 400; line-height: 1.7;">
+                                ¡Excelentes noticias! Tu registro en la lista <strong style="color: #ffffff !important;">{{.list_name}}</strong> ha sido aprobado. Ya puedes asistir al evento con tus acompanantes.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Approved Status -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: rgba(52, 211, 153, 0.08) !important; border: 1.5px solid rgba(52, 211, 153, 0.25); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td align="center">
+                                        <p style="margin: 0 0 8px; color: rgb(52, 211, 153) !important; font-size: 17px; font-weight: 700; line-height: 1.2;">
+                                            &#10003; Registro Aprobado
+                                        </p>
+                                        <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.7) !important; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                                            Tu entrada ha sido generada. Presenta este correo o tu nombre en la entrada del evento.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Event Details -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; overflow: hidden;">
+                                <tr>
+                                    <td style="padding: 24px 24px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                        <p style="margin: 0 0 4px; color: rgba(255, 255, 255, 0.5) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                            Tu Entrada
+                                        </p>
+                                        <h3 class="dark-mode-text" style="margin: 0; color: #ffffff !important; font-size: 22px; font-weight: 700; line-height: 1.3; letter-spacing: -0.3px;">
+                                            {{.event_name}}
+                                        </h3>
+                                    </td>
+                                </tr>
+
+                                <tr>
+                                    <td style="padding: 0;">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                                            <tr>
+                                                <td width="50%" style="padding: 18px 24px; border-right: 1px solid rgba(255, 255, 255, 0.06); border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                                    <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px; font-weight: 500;">
+                                                        Lista
+                                                    </p>
+                                                    <p class="dark-mode-text" style="margin: 0; color: #ffffff !important; font-size: 15px; font-weight: 500;">
+                                                        {{.list_name}}
+                                                    </p>
+                                                </td>
+                                                <td width="50%" style="padding: 18px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                                    <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px; font-weight: 500;">
+                                                        Responsable
+                                                    </p>
+                                                    <p class="dark-mode-text" style="margin: 0; color: #ffffff !important; font-size: 15px; font-weight: 500;">
+                                                        {{.name}}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td width="50%" style="padding: 18px 24px; border-right: 1px solid rgba(255, 255, 255, 0.06); border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                                    <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px; font-weight: 500;">
+                                                        Acompanantes
+                                                    </p>
+                                                    <p class="dark-mode-text" style="margin: 0; color: #ffffff !important; font-size: 15px; font-weight: 500;">
+                                                        +{{.guest_count}}
+                                                    </p>
+                                                </td>
+                                                <td width="50%" style="padding: 18px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                                    <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px; font-weight: 500;">
+                                                        Total de Personas
+                                                    </p>
+                                                    <p class="dark-mode-text" style="margin: 0; color: rgb(52, 211, 153) !important; font-size: 15px; font-weight: 600;">
+                                                        {{.total_people}} personas
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+
+                                <!-- Free Badge -->
+                                <tr>
+                                    <td style="padding: 20px 24px; background-color: rgba(52, 211, 153, 0.05) !important; border-top: 1px solid rgba(52, 211, 153, 0.15);">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                                            <tr>
+                                                <td>
+                                                    <p style="margin: 0; color: rgba(255, 255, 255, 0.7) !important; font-size: 14px; font-weight: 500;">
+                                                        Precio
+                                                    </p>
+                                                </td>
+                                                <td align="right">
+                                                    <p style="margin: 0; color: rgb(52, 211, 153) !important; font-size: 20px; font-weight: 700; line-height: 1;">
+                                                        GRATIS
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Instructions -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(217, 70, 239, 0.08)) !important; border: 1px solid rgba(139, 92, 246, 0.2); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td>
+                                        <p class="dark-mode-text" style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px; font-weight: 700; line-height: 1;">
+                                            ¿Como entrar al evento?
+                                        </p>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                                            <tr>
+                                                <td style="padding: 0 0 12px 0;">
+                                                    <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                                                        <strong style="color: rgb(167, 139, 250);">1.</strong> Presenta este correo en la entrada del evento
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 0 0 12px 0;">
+                                                    <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                                                        <strong style="color: rgb(167, 139, 250);">2.</strong> Indica tu nombre: <strong style="color: #ffffff;">{{.name}}</strong>
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 0;">
+                                                    <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                                                        <strong style="color: rgb(167, 139, 250);">3.</strong> Asegurate de llegar con tus {{.guest_count}} acompanantes
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- CTA Button -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 40px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                                <tr>
+                                    <td align="center">
+                                        <a href="{{.event_link}}" style="display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(217, 70, 239, 0.3)); border: 1.5px solid rgba(139, 92, 246, 0.5); border-radius: 12px; color: #ffffff !important; font-size: 16px; font-weight: 600; text-decoration: none; letter-spacing: 0.3px;">
+                                            Ver Detalles del Evento
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Support -->
+                    <tr>
+                        <td style="padding: 32px 48px; background-color: rgba(0, 0, 0, 0.3) !important; border-top: 1px solid rgba(255, 255, 255, 0.06);">
+                            <p class="dark-mode-text" style="margin: 0 0 8px; color: #ffffff !important; font-size: 15px; font-weight: 700;">
+                                ¿Necesitas ayuda?
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.65) !important; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                                Contacta a nuestro equipo de soporte si tienes alguna pregunta.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 48px; text-align: center; background-color: rgba(0, 0, 0, 0.4) !important; border-top: 1px solid rgba(255, 255, 255, 0.04);">
+                            <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.4) !important; font-size: 12px; font-weight: 500;">
+                                &copy; 2024 Pull. Todos los derechos reservados.
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.3) !important; font-size: 11px; font-weight: 400;">
+                                {{.list_name}} - {{.name}}
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

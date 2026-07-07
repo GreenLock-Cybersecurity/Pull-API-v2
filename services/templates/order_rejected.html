@@ -1,0 +1,207 @@
+<!-- templates/order_rejected.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+    <title>Order Update - Pull</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            supported-color-schemes: light dark;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .dark-mode-bg {
+                background-color: #0f0f15 !important;
+            }
+            .dark-mode-text {
+                color: #ffffff !important;
+            }
+            .dark-mode-text-secondary {
+                color: rgba(255, 255, 255, 0.75) !important;
+            }
+            .dark-mode-border {
+                border-color: rgba(139, 92, 246, 0.15) !important;
+            }
+        }
+
+        [data-ogsc] {
+            color: inherit !important;
+        }
+
+        u + .body {
+            background: #0a0a12 !important;
+        }
+    </style>
+</head>
+<body class="body" style="margin: 0; padding: 0; background-color: #0a0a12 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        Important update regarding your reservation for {{.event_name}}
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: #0a0a12 !important; padding: 40px 20px; min-height: 100vh;">
+        <tr>
+            <td align="center">
+
+                <table width="650" cellpadding="0" cellspacing="0" border="0" role="presentation" class="dark-mode-bg dark-mode-border" style="background-color: #0f0f15 !important; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6); border: 1px solid rgba(139, 92, 246, 0.15); max-width: 650px;">
+
+                    <!-- Logo Header -->
+                    <tr>
+                        <td style="padding: 48px 48px 40px; text-align: center; background-color: rgba(139, 92, 246, 0.08) !important; border-bottom: 1px solid rgba(139, 92, 246, 0.15);">
+                            <img src="https://pullevents.com/public/logo.png" alt="Pull Logo" width="200" height="50" style="height: 50px; width: auto; display: block; margin: 0 auto; max-width: 200px;" />
+                        </td>
+                    </tr>
+
+                    <!-- Title -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 48px 48px 32px; text-align: center; background-color: #141418 !important;">
+                            <h2 class="dark-mode-text" style="margin: 0 0 12px; color: #ffffff !important; font-size: 28px; font-weight: 700; letter-spacing: -0.8px;">
+                                Reservation Update
+                            </h2>
+                            <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.65) !important; font-size: 17px; font-weight: 400; line-height: 1.5;">
+                                Important information about your order
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Greeting -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <p class="dark-mode-text" style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px; font-weight: 400; line-height: 1.6;">
+                                Dear <strong style="color: rgb(167, 139, 250) !important; font-weight: 600;">{{.user_name}}</strong>,
+                            </p>
+                            <p class="dark-mode-text-secondary" style="margin: 0 0 16px; color: rgba(255, 255, 255, 0.75) !important; font-size: 15px; font-weight: 400; line-height: 1.7;">
+                                We sincerely regret to inform you that your ticket reservation for <strong style="color: rgb(167, 139, 250) !important;">{{.event_name}}</strong> could not be processed at this time.
+                            </p>
+                            <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 15px; font-weight: 400; line-height: 1.7;">
+                                We truly apologize for any inconvenience this may cause. Our staff at Pull has carefully reviewed your request, but unfortunately, we are unable to fulfill it on this occasion.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Reason Card -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(220, 38, 38, 0.08)) !important; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 14px; overflow: hidden;">
+                                <tr>
+                                    <td style="padding: 24px;">
+                                        <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.5) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                            Reason for Cancellation
+                                        </p>
+                                        <p class="dark-mode-text" style="margin: 0; color: rgba(255, 255, 255, 0.9) !important; font-size: 15px; font-weight: 400; line-height: 1.6;">
+                                            {{.reason}}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Event Details Card -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; overflow: hidden;">
+                                <tr>
+                                    <td style="padding: 24px;">
+                                        <p style="margin: 0 0 4px; color: rgba(255, 255, 255, 0.5) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                            Event Details
+                                        </p>
+                                        <h3 class="dark-mode-text" style="margin: 0 0 12px; color: #ffffff !important; font-size: 20px; font-weight: 700; line-height: 1.3; letter-spacing: -0.3px;">
+                                            {{.event_name}}
+                                        </h3>
+                                        <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.6) !important; font-size: 14px;">
+                                            <span style="color: rgb(139, 92, 246) !important;">📍</span> {{.venue_name}}
+                                        </p>
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.6) !important; font-size: 14px;">
+                                            <span style="color: rgb(139, 92, 246) !important;">📅</span> {{.event_date}}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- What's Next -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 40px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(217, 70, 239, 0.05)) !important; border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td>
+                                        <p class="dark-mode-text" style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px; font-weight: 700; line-height: 1;">
+                                            What You Can Do
+                                        </p>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                                            <tr>
+                                                <td style="padding: 0 0 12px 0;">
+                                                    <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                                                        • If you have any questions, please <strong style="color: #ffffff !important; font-weight: 600;">contact the venue directly</strong>
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 0 0 12px 0;">
+                                                    <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                                                        • You may <strong style="color: #ffffff !important; font-weight: 600;">try again</strong> with a new reservation request
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 0;">
+                                                    <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                                                        • Browse other <strong style="color: #ffffff !important; font-weight: 600;">upcoming events</strong> that might interest you
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Apology Message -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 40px; background-color: #141418 !important; text-align: center;">
+                            <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.6) !important; font-size: 14px; font-weight: 400; line-height: 1.6; font-style: italic;">
+                                We appreciate your understanding and hope to see you at a future event. Thank you for choosing Pull.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Support -->
+                    <tr>
+                        <td style="padding: 32px 48px; background-color: rgba(0, 0, 0, 0.3) !important; border-top: 1px solid rgba(255, 255, 255, 0.06);">
+                            <p class="dark-mode-text" style="margin: 0 0 8px; color: #ffffff !important; font-size: 15px; font-weight: 700;">
+                                Need Help?
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.65) !important; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                                For any concerns or questions about this cancellation, please contact the venue directly. They will be happy to assist you.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 48px; text-align: center; background-color: rgba(0, 0, 0, 0.4) !important; border-top: 1px solid rgba(255, 255, 255, 0.04);">
+                            <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.4) !important; font-size: 12px; font-weight: 500;">
+                                © 2024 Pull. All rights reserved.
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.3) !important; font-size: 11px; font-weight: 400;">
+                                This is an automated message regarding your reservation
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light dark">
+    <title>¡Gracias! Selecciona tus Botellas - Pull</title>
+    <style>
+        :root { color-scheme: light dark; }
+        @media (prefers-color-scheme: dark) {
+            .dark-mode-bg { background-color: #0f0f15 !important; }
+            .dark-mode-text { color: #ffffff !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a12 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
+
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        ¡Gracias {{.host_name}}! Tu reserva para {{.event_name}} está lista. Selecciona tus botellas ahora.
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0a0a12 !important; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="650" cellpadding="0" cellspacing="0" border="0" style="background-color: #0f0f15 !important; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6); border: 1px solid rgba(16, 185, 129, 0.15); max-width: 650px;">
+
+                    <!-- Logo Header -->
+                    <tr>
+                        <td style="padding: 48px 48px 40px; text-align: center; background-color: rgba(16, 185, 129, 0.08) !important; border-bottom: 1px solid rgba(16, 185, 129, 0.15);">
+                            <img src="https://pullevents.com/public/logo.png" alt="Pull Logo" width="200" height="50" style="height: 50px; width: auto; display: block; margin: 0 auto;" />
+                        </td>
+                    </tr>
+
+                    <!-- Banner -->
+                    <tr>
+                        <td style="padding: 48px 48px 32px; text-align: center; background-color: #141418 !important;">
+                            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1)); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 40px;">🍾</span>
+                            </div>
+                            <h2 style="margin: 0 0 12px; color: #10b981 !important; font-size: 28px; font-weight: 700;">
+                                ¡Gracias {{.host_name}}!
+                            </h2>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.65) !important; font-size: 17px;">
+                                Tu reserva está confirmada. Es hora de elegir tus botellas.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Stats -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)) !important; border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 16px;">
+                                <tr>
+                                    <td style="padding: 28px; text-align: center;">
+                                        <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.6) !important; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">
+                                            Presupuesto para Botellas
+                                        </p>
+                                        <p style="margin: 0 0 16px; color: #10b981 !important; font-size: 36px; font-weight: 800;">
+                                            {{.currency}} {{.total_consumables}}
+                                        </p>
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.5) !important; font-size: 14px;">
+                                            {{.guests_paid}} invitados han pagado
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Event Card -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px;">
+                                <tr>
+                                    <td style="padding: 24px;">
+                                        <p style="margin: 0 0 4px; color: rgba(255, 255, 255, 0.5) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                            Tu Evento
+                                        </p>
+                                        <h3 style="margin: 0 0 8px; color: #ffffff !important; font-size: 20px; font-weight: 700;">
+                                            {{.event_name}}
+                                        </h3>
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.6) !important; font-size: 14px;">
+                                            📅 {{.event_date}} • 📍 {{.venue_name}}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- CTA Button -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;" align="center">
+                            <a href="{{.bottle_selection_url}}" style="display: inline-block; background: linear-gradient(135deg, rgb(16, 185, 129), rgb(5, 150, 105)); color: #ffffff !important; text-decoration: none; padding: 18px 48px; border-radius: 12px; font-weight: 700; font-size: 18px; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);">
+                                🍾 Seleccionar Botellas
+                            </a>
+                            <p style="margin: 16px 0 0; color: rgba(255, 255, 255, 0.5) !important; font-size: 13px;">
+                                Elige las botellas que quieres para tu reserva
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Instructions -->
+                    <tr>
+                        <td style="padding: 0 48px 40px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: rgba(139, 92, 246, 0.05) !important; border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0 0 12px; color: #ffffff !important; font-size: 15px; font-weight: 600;">
+                                            ¿Cómo funciona?
+                                        </p>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr><td style="padding: 0 0 8px;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 13px;">1. Haz clic en el botón de arriba</p></td></tr>
+                                            <tr><td style="padding: 0 0 8px;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 13px;">2. Verás el stock de botellas disponibles</p></td></tr>
+                                            <tr><td style="padding: 0 0 8px;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 13px;">3. Selecciona las que prefieras (sin exceder tu presupuesto)</p></td></tr>
+                                            <tr><td style="padding: 0;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 13px;">4. Confirma tu selección y listo ✨</p></td></tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 48px; text-align: center; background-color: rgba(0, 0, 0, 0.4) !important; border-top: 1px solid rgba(255, 255, 255, 0.04);">
+                            <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.4) !important; font-size: 12px;">
+                                Este enlace es personal y único. No lo compartas.
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.3) !important; font-size: 11px;">
+                                © 2024 Pull. Todos los derechos reservados.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

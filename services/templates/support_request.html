@@ -1,0 +1,200 @@
+<!-- templates/support_request.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light dark">
+    <meta name="supported-color-schemes" content="light dark">
+    <title>New Support Request - Pull</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            supported-color-schemes: light dark;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .dark-mode-bg {
+                background-color: #0f0f15 !important;
+            }
+            .dark-mode-text {
+                color: #ffffff !important;
+            }
+            .dark-mode-text-secondary {
+                color: rgba(255, 255, 255, 0.75) !important;
+            }
+            .dark-mode-border {
+                border-color: rgba(139, 92, 246, 0.15) !important;
+            }
+        }
+
+        [data-ogsc] {
+            color: inherit !important;
+        }
+
+        u + .body {
+            background: #0a0a12 !important;
+        }
+    </style>
+</head>
+<body class="body" style="margin: 0; padding: 0; background-color: #0a0a12 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        New support request from {{.user_email}}: {{.subject}}
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: #0a0a12 !important; padding: 40px 20px; min-height: 100vh;">
+        <tr>
+            <td align="center">
+
+                <table width="650" cellpadding="0" cellspacing="0" border="0" role="presentation" class="dark-mode-bg dark-mode-border" style="background-color: #0f0f15 !important; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6); border: 1px solid rgba(139, 92, 246, 0.15); max-width: 650px;">
+
+                    <!-- Logo Header -->
+                    <tr>
+                        <td style="padding: 48px 48px 40px; text-align: center; background-color: rgba(139, 92, 246, 0.08) !important; border-bottom: 1px solid rgba(139, 92, 246, 0.15);">
+                            <img src="https://pullevents.com/public/logo.png" alt="Pull Logo" width="200" height="50" style="height: 50px; width: auto; display: block; margin: 0 auto; max-width: 200px;" />
+                        </td>
+                    </tr>
+
+                    <!-- Title -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 48px 48px 32px; text-align: center; background-color: #141418 !important;">
+                            <h2 class="dark-mode-text" style="margin: 0 0 12px; color: #ffffff !important; font-size: 32px; font-weight: 700; letter-spacing: -0.8px;">
+                                New Support Request
+                            </h2>
+                            <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.65) !important; font-size: 17px; font-weight: 400; line-height: 1.5;">
+                                A user needs assistance
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- User Info Box -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.12), rgba(217, 70, 239, 0.12)) !important; border: 1.5px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 24px;">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.55) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;">
+                                            Contact Information
+                                        </p>
+                                        <p class="dark-mode-text" style="margin: 0; color: #ffffff !important; font-size: 18px; font-weight: 600; line-height: 1.4;">
+                                            {{.user_email}}
+                                        </p>
+                                        {{if .user_name}}
+                                        <p class="dark-mode-text-secondary" style="margin: 8px 0 0; color: rgba(255, 255, 255, 0.7) !important; font-size: 14px; font-weight: 400;">
+                                            Name: {{.user_name}}
+                                        </p>
+                                        {{end}}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Subject Box -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.55) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;">
+                                            Subject
+                                        </p>
+                                        <p class="dark-mode-text" style="margin: 0; color: #ffffff !important; font-size: 18px; font-weight: 600; line-height: 1.4;">
+                                            {{.subject}}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Message Box -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0 0 12px; color: rgba(255, 255, 255, 0.55) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 600;">
+                                            Message
+                                        </p>
+                                        <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.85) !important; font-size: 15px; font-weight: 400; line-height: 1.7; white-space: pre-wrap;">{{.message}}</p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Action Note -->
+                    <tr>
+                        <td class="dark-mode-bg" style="padding: 0 48px 40px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: rgba(251, 191, 36, 0.08) !important; border: 1.5px solid rgba(251, 191, 36, 0.25); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td align="center">
+                                        <p style="margin: 0 0 8px; color: rgb(251, 191, 36) !important; font-size: 17px; font-weight: 700; line-height: 1.2;">
+                                            Action Required
+                                        </p>
+                                        <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.7) !important; font-size: 14px; font-weight: 400; line-height: 1.6;">
+                                            Please respond to <strong style="color: #ffffff !important;">{{.user_email}}</strong> within 24-48 hours.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Metadata -->
+                    <tr>
+                        <td style="padding: 32px 48px; background-color: rgba(0, 0, 0, 0.3) !important; border-top: 1px solid rgba(255, 255, 255, 0.06);">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                                <tr>
+                                    <td width="33%">
+                                        <p style="margin: 0 0 4px; color: rgba(255, 255, 255, 0.45) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                            Submitted
+                                        </p>
+                                        <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 13px; font-weight: 400;">
+                                            {{.timestamp}}
+                                        </p>
+                                    </td>
+                                    <td width="33%" style="text-align: center;">
+                                        <p style="margin: 0 0 4px; color: rgba(255, 255, 255, 0.45) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                            Client IP
+                                        </p>
+                                        <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 13px; font-weight: 400;">
+                                            {{.client_ip}}
+                                        </p>
+                                    </td>
+                                    <td width="33%" style="text-align: right;">
+                                        <p style="margin: 0 0 4px; color: rgba(255, 255, 255, 0.45) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">
+                                            Source
+                                        </p>
+                                        <p class="dark-mode-text-secondary" style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 13px; font-weight: 400;">
+                                            {{.source}}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 48px; text-align: center; background-color: rgba(0, 0, 0, 0.4) !important; border-top: 1px solid rgba(255, 255, 255, 0.04);">
+                            <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.4) !important; font-size: 12px; font-weight: 500;">
+                                Pull Support System
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.3) !important; font-size: 11px; font-weight: 400;">
+                                Internal notification - Do not forward
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

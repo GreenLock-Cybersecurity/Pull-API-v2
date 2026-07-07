@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light dark">
+    <title>Tu Entrada para {{.event_name}} - Pull</title>
+    <style>
+        :root { color-scheme: light dark; }
+        @media (prefers-color-scheme: dark) {
+            .dark-mode-bg { background-color: #0f0f15 !important; }
+            .dark-mode-text { color: #ffffff !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a12 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
+
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        Tu entrada para {{.event_name}} está lista. Presenta el código QR en la entrada.
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0a0a12 !important; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="650" cellpadding="0" cellspacing="0" border="0" style="background-color: #0f0f15 !important; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6); border: 1px solid rgba(16, 185, 129, 0.15); max-width: 650px;">
+
+                    <!-- Logo Header -->
+                    <tr>
+                        <td style="padding: 48px 48px 40px; text-align: center; background-color: rgba(16, 185, 129, 0.08) !important; border-bottom: 1px solid rgba(16, 185, 129, 0.15);">
+                            <img src="https://pullevents.com/public/logo.png" alt="Pull Logo" width="200" height="50" style="height: 50px; width: auto; display: block; margin: 0 auto;" />
+                        </td>
+                    </tr>
+
+                    <!-- Success Banner -->
+                    <tr>
+                        <td style="padding: 48px 48px 32px; text-align: center; background-color: #141418 !important;">
+                            <h2 style="margin: 0 0 12px; color: #10b981 !important; font-size: 32px; font-weight: 700;">
+                                Pago Confirmado
+                            </h2>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.65) !important; font-size: 17px;">
+                                Tu entrada está lista
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Greeting -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <p style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px;">
+                                Hola <strong style="color: rgb(16, 185, 129) !important;">{{.guest_name}}</strong>,
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 15px; line-height: 1.7;">
+                                Tu pago ha sido procesado correctamente. A continuación encontrarás tu entrada para <strong style="color: rgb(167, 139, 250) !important;">{{.event_name}}</strong>.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- QR Code Section -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)) !important; border: 2px solid rgba(16, 185, 129, 0.3); border-radius: 20px; padding: 32px;">
+                                <tr>
+                                    <td align="center">
+                                        <p style="margin: 0 0 20px; color: #10b981 !important; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                                            Código de Entrada
+                                        </p>
+                                        <!-- QR Code Image -->
+                                        <div style="background-color: #ffffff; padding: 16px; border-radius: 12px; display: inline-block; margin-bottom: 20px;">
+                                            <img src="{{.qr_code_url}}" alt="QR Code" width="180" height="180" style="display: block; width: 180px; height: 180px;" />
+                                        </div>
+                                        <p style="margin: 0 0 8px; color: #ffffff !important; font-size: 20px; font-weight: 700; font-family: monospace; letter-spacing: 2px;">
+                                            {{.ticket_code}}
+                                        </p>
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.5) !important; font-size: 13px;">
+                                            Presenta este código en la entrada
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Event Details Card -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px;">
+                                <tr>
+                                    <td style="padding: 24px 24px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                        <p style="margin: 0 0 4px; color: rgba(255, 255, 255, 0.5) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                            Detalles del Evento
+                                        </p>
+                                        <h3 style="margin: 0; color: #ffffff !important; font-size: 22px; font-weight: 700;">
+                                            {{.event_name}}
+                                        </h3>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 0;">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td width="50%" style="padding: 18px 24px; border-right: 1px solid rgba(255, 255, 255, 0.06); border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                                    <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px;">Fecha</p>
+                                                    <p style="margin: 0; color: #ffffff !important; font-size: 15px;">{{.event_date}}</p>
+                                                </td>
+                                                <td width="50%" style="padding: 18px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                                    <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px;">Lugar</p>
+                                                    <p style="margin: 0; color: #ffffff !important; font-size: 15px;">{{.venue_name}}</p>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td width="50%" style="padding: 18px 24px; border-right: 1px solid rgba(255, 255, 255, 0.06);">
+                                                    <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px;">Tipo de Reserva</p>
+                                                    <p style="margin: 0; color: #a78bfa !important; font-size: 15px; font-weight: 600;">{{.table_or_bar}}</p>
+                                                </td>
+                                                <td width="50%" style="padding: 18px 24px;">
+                                                    <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px;">Total Pagado</p>
+                                                    <p style="margin: 0; color: #10b981 !important; font-size: 18px; font-weight: 700;">{{.currency}} {{.amount_paid}}</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 16px 24px; border-top: 1px solid rgba(255, 255, 255, 0.06);">
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px; text-align: center;">
+                                            {{.price_per_person}} per Person Consumibles (incluye costes de gestión)
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Instructions -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: rgba(139, 92, 246, 0.05) !important; border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px; font-weight: 700;">
+                                            Instrucciones de Entrada
+                                        </p>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr><td style="padding: 0 0 12px;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px;">• Presenta el código QR en tu teléfono o impreso</p></td></tr>
+                                            <tr><td style="padding: 0 0 12px;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px;">• Lleva un documento de identidad válido</p></td></tr>
+                                            <tr><td style="padding: 0 0 12px;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px;">• Tu entrada es personal e intransferible</p></td></tr>
+                                            <tr><td style="padding: 0;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px;">• También adjuntamos tu entrada en PDF</p></td></tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Host Info -->
+                    <tr>
+                        <td style="padding: 0 48px 40px; background-color: #141418 !important;">
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.5) !important; font-size: 13px; text-align: center;">
+                                Reserva organizada por <strong style="color: rgba(255, 255, 255, 0.7) !important;">{{.host_name}}</strong>
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 48px; text-align: center; background-color: rgba(0, 0, 0, 0.4) !important; border-top: 1px solid rgba(255, 255, 255, 0.04);">
+                            <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.4) !important; font-size: 12px;">
+                                © 2024 Pull. Todos los derechos reservados.
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.3) !important; font-size: 11px;">
+                                ¿Preguntas? Contacta al organizador del evento.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light dark">
+    <title>Botellas Confirmadas - Pull</title>
+    <style>
+        :root { color-scheme: light dark; }
+        @media (prefers-color-scheme: dark) {
+            .dark-mode-bg { background-color: #0f0f15 !important; }
+            .dark-mode-text { color: #ffffff !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a12 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
+
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        ¡Listo! Tus botellas para {{.event_name}} han sido confirmadas.
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0a0a12 !important; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="650" cellpadding="0" cellspacing="0" border="0" style="background-color: #0f0f15 !important; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6); border: 1px solid rgba(16, 185, 129, 0.15); max-width: 650px;">
+
+                    <!-- Logo Header -->
+                    <tr>
+                        <td style="padding: 48px 48px 40px; text-align: center; background-color: rgba(16, 185, 129, 0.08) !important; border-bottom: 1px solid rgba(16, 185, 129, 0.15);">
+                            <img src="https://pullevents.com/public/logo.png" alt="Pull Logo" width="200" height="50" style="height: 50px; width: auto; display: block; margin: 0 auto;" />
+                        </td>
+                    </tr>
+
+                    <!-- Banner -->
+                    <tr>
+                        <td style="padding: 48px 48px 32px; text-align: center; background-color: #141418 !important;">
+                            <div style="width: 80px; height: 80px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(16, 185, 129, 0.1)); border-radius: 50%; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 40px;">✅</span>
+                            </div>
+                            <h2 style="margin: 0 0 12px; color: #10b981 !important; font-size: 28px; font-weight: 700;">
+                                ¡Botellas Confirmadas!
+                            </h2>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.65) !important; font-size: 17px;">
+                                Tu selección ha sido guardada exitosamente
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Greeting -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <p style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px;">
+                                Hola <strong style="color: rgb(16, 185, 129) !important;">{{.host_name}}</strong>,
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 15px; line-height: 1.7;">
+                                Aquí está el resumen de las botellas que seleccionaste para <strong style="color: rgb(167, 139, 250) !important;">{{.event_name}}</strong>.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Bottles Summary -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px;">
+                                <tr>
+                                    <td style="padding: 24px 24px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.5) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                            Tus Botellas
+                                        </p>
+                                    </td>
+                                </tr>
+                                {{range .bottles}}
+                                <tr>
+                                    <td style="padding: 16px 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.04);">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td style="width: 70%;">
+                                                    <p style="margin: 0 0 4px; color: #ffffff !important; font-size: 15px; font-weight: 600;">
+                                                        {{.name}}
+                                                    </p>
+                                                    <p style="margin: 0; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px;">
+                                                        {{.brand}} • x{{.quantity}}
+                                                    </p>
+                                                </td>
+                                                <td style="width: 30%; text-align: right;">
+                                                    <p style="margin: 0; color: #10b981 !important; font-size: 15px; font-weight: 600;">
+                                                        Q {{.price}}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                                {{end}}
+                                <tr>
+                                    <td style="padding: 20px 24px; background-color: rgba(16, 185, 129, 0.05);">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td style="width: 70%;">
+                                                    <p style="margin: 0; color: #ffffff !important; font-size: 16px; font-weight: 700;">
+                                                        Total: {{.total_bottles}} botella(s)
+                                                    </p>
+                                                </td>
+                                                <td style="width: 30%; text-align: right;">
+                                                    <p style="margin: 0; color: #10b981 !important; font-size: 18px; font-weight: 700;">
+                                                        {{.currency}} {{.total_value}}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Budget Summary -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05)) !important; border: 1px solid rgba(139, 92, 246, 0.25); border-radius: 14px;">
+                                <tr>
+                                    <td style="padding: 24px;">
+                                        <p style="margin: 0 0 16px; color: rgba(255, 255, 255, 0.5) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                            Resumen de Presupuesto
+                                        </p>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td style="padding: 8px 0;">
+                                                    <p style="margin: 0; color: rgba(255, 255, 255, 0.7) !important; font-size: 14px;">Presupuesto disponible</p>
+                                                </td>
+                                                <td style="padding: 8px 0; text-align: right;">
+                                                    <p style="margin: 0; color: #ffffff !important; font-size: 14px; font-weight: 600;">{{.currency}} {{.budget}}</p>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 8px 0;">
+                                                    <p style="margin: 0; color: rgba(255, 255, 255, 0.7) !important; font-size: 14px;">Botellas seleccionadas</p>
+                                                </td>
+                                                <td style="padding: 8px 0; text-align: right;">
+                                                    <p style="margin: 0; color: #ffffff !important; font-size: 14px; font-weight: 600;">- {{.currency}} {{.total_value}}</p>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td colspan="2" style="padding: 12px 0 0;">
+                                                    <div style="height: 1px; background-color: rgba(139, 92, 246, 0.3);"></div>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding: 12px 0 0;">
+                                                    <p style="margin: 0; color: #a78bfa !important; font-size: 16px; font-weight: 700;">Crédito restante</p>
+                                                </td>
+                                                <td style="padding: 12px 0 0; text-align: right;">
+                                                    <p style="margin: 0; color: #a78bfa !important; font-size: 20px; font-weight: 800;">{{.currency}} {{.remaining_credit}}</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    {{if .has_remaining_credit}}
+                    <!-- Remaining Credit Info -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: rgba(251, 191, 36, 0.08) !important; border: 1px solid rgba(251, 191, 36, 0.2); border-radius: 14px;">
+                                <tr>
+                                    <td style="padding: 24px; text-align: center;">
+                                        <p style="margin: 0 0 8px; color: #fbbf24 !important; font-size: 14px; font-weight: 600;">
+                                            Crédito Adicional Disponible
+                                        </p>
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.7) !important; font-size: 13px; line-height: 1.6;">
+                                            Tienes <strong style="color: #fbbf24;">{{.currency}} {{.remaining_credit}}</strong> de crédito restante.
+                                            Este monto estará disponible para consumir en la discoteca el día del evento.
+                                            Solo presenta tu reserva al staff.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    {{end}}
+
+                    <!-- Event Info -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px;">
+                                <tr>
+                                    <td style="padding: 24px;">
+                                        <p style="margin: 0 0 4px; color: rgba(255, 255, 255, 0.5) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                            Detalles del Evento
+                                        </p>
+                                        <h3 style="margin: 0 0 8px; color: #ffffff !important; font-size: 18px; font-weight: 700;">
+                                            {{.event_name}}
+                                        </h3>
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.6) !important; font-size: 14px;">
+                                            Fecha: {{.event_date}} | {{.venue_name}}
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Instructions -->
+                    <tr>
+                        <td style="padding: 0 48px 40px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: rgba(16, 185, 129, 0.05) !important; border: 1px solid rgba(16, 185, 129, 0.15); border-radius: 14px;">
+                                <tr>
+                                    <td style="padding: 24px; text-align: center;">
+                                        <p style="margin: 0 0 8px; color: #10b981 !important; font-size: 14px; font-weight: 600;">
+                                            Instrucciones para el Evento
+                                        </p>
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.7) !important; font-size: 13px; line-height: 1.6;">
+                                            Presenta este correo o tu código de reserva en la barra para recibir tus botellas.
+                                            El staff escaneará tu voucher para validar la entrega.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 48px; text-align: center; background-color: rgba(0, 0, 0, 0.4) !important; border-top: 1px solid rgba(255, 255, 255, 0.04);">
+                            <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.4) !important; font-size: 12px;">
+                                Nos vemos en el evento
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.3) !important; font-size: 11px;">
+                                © 2024 Pull. Todos los derechos reservados.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

@@ -1,0 +1,54 @@
+# ===== SECRETS — NUNCA COMMIT =====
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*_rsa
+*_rsa.pub
+secrets/
+.claude/tmp/
+
+# ===== BINARIOS Y BUILDS =====
+pull-api-v2
+pull-api-v2.exe
+main
+main.exe
+/dist/
+/build/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+coverage.html
+/tmp/
+/scratchpad/
+
+# ===== GO =====
+vendor/
+go.sum.tmp
+
+# ===== EDITOR / SO =====
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ===== LOGS =====
+*.log
+api_error.log
+logs/
+
+# ===== FLY / DEPLOY =====
+.fly/
+fly.state
+
+# ===== DEMO SCRATCH =====
+/cmd/hashpwd/hashpwd
+/cmd/hashpwd/hashpwd.exe

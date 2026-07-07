@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light dark">
+    <title>Tu Lista VIP está lista - Pull</title>
+    <style>
+        :root { color-scheme: light dark; }
+        @media (prefers-color-scheme: dark) {
+            .dark-mode-bg { background-color: #0f0f15 !important; }
+            .dark-mode-text { color: #ffffff !important; }
+            .dark-mode-text-secondary { color: rgba(255, 255, 255, 0.75) !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a12 !important; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;">
+
+    <div style="display: none; max-height: 0; overflow: hidden;">
+        Tu lista VIP para {{.event_name}} está lista. Comparte el link con tus invitados.
+    </div>
+
+    <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #0a0a12 !important; padding: 40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="650" cellpadding="0" cellspacing="0" border="0" style="background-color: #0f0f15 !important; border-radius: 24px; overflow: hidden; box-shadow: 0 25px 80px rgba(0, 0, 0, 0.6); border: 1px solid rgba(139, 92, 246, 0.15); max-width: 650px;">
+
+                    <!-- Logo Header -->
+                    <tr>
+                        <td style="padding: 48px 48px 40px; text-align: center; background-color: rgba(139, 92, 246, 0.08) !important; border-bottom: 1px solid rgba(139, 92, 246, 0.15);">
+                            <img src="https://pullevents.com/public/logo.png" alt="Pull Logo" width="200" height="50" style="height: 50px; width: auto; display: block; margin: 0 auto;" />
+                        </td>
+                    </tr>
+
+                    <!-- Success Banner -->
+                    <tr>
+                        <td style="padding: 48px 48px 32px; text-align: center; background-color: #141418 !important;">
+                            <h2 style="margin: 0 0 12px; color: #ffffff !important; font-size: 32px; font-weight: 700;">
+                                Tu Lista VIP está Lista
+                            </h2>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.65) !important; font-size: 17px;">
+                                Comparte el link con tus invitados para que confirmen asistencia
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Greeting -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <p style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px;">
+                                Hola <strong style="color: rgb(167, 139, 250) !important;">{{.host_name}}</strong>,
+                            </p>
+                            <p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 15px; line-height: 1.7;">
+                                Tu lista VIP para <strong style="color: rgb(167, 139, 250) !important;">{{.event_name}}</strong> ha sido creada. Ahora tus invitados pueden confirmar su asistencia.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Event Details Card -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: rgba(255, 255, 255, 0.03) !important; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px;">
+                                <tr>
+                                    <td style="padding: 24px 24px 20px; border-bottom: 1px solid rgba(255, 255, 255, 0.06);">
+                                        <p style="margin: 0 0 4px; color: rgba(255, 255, 255, 0.5) !important; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">
+                                            Detalles del Evento
+                                        </p>
+                                        <h3 style="margin: 0; color: #ffffff !important; font-size: 22px; font-weight: 700;">
+                                            {{.event_name}}
+                                        </h3>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 0;">
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td width="50%" style="padding: 18px 24px; border-right: 1px solid rgba(255, 255, 255, 0.06);">
+                                                    <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px;">Fecha</p>
+                                                    <p style="margin: 0; color: #ffffff !important; font-size: 15px;">{{.event_date}}</p>
+                                                </td>
+                                                <td width="50%" style="padding: 18px 24px;">
+                                                    <p style="margin: 0 0 6px; color: rgba(255, 255, 255, 0.5) !important; font-size: 12px;">Tipo</p>
+                                                    <p style="margin: 0; color: #ffffff !important; font-size: 15px;">{{if eq .table_or_bar "table"}}Mesa{{else}}Barra{{end}}</p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Share Link Section -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.1)) !important; border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 16px; padding: 28px;">
+                                <tr>
+                                    <td align="center">
+                                        <p style="margin: 0 0 12px; color: #ffffff !important; font-size: 18px; font-weight: 700;">
+                                            Link para Compartir
+                                        </p>
+                                        <p style="margin: 0 0 20px; color: rgba(255, 255, 255, 0.7) !important; font-size: 14px; line-height: 1.6;">
+                                            Comparte este link con tus invitados para que confirmen su asistencia
+                                        </p>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 20px;">
+                                            <tr>
+                                                <td style="background-color: rgba(0, 0, 0, 0.3); border-radius: 8px; padding: 12px 16px;">
+                                                    <p style="margin: 0; color: rgba(255, 255, 255, 0.9) !important; font-size: 13px; font-family: 'Courier New', monospace; word-break: break-all; text-align: center;">
+                                                        {{.tracking_url}}
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        <a href="{{.tracking_url}}" style="display: inline-block; background: linear-gradient(135deg, rgb(59, 130, 246), rgb(37, 99, 235)); color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 600; font-size: 15px;">
+                                            Ver Lista VIP
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Edit Code Section -->
+                    <tr>
+                        <td style="padding: 0 48px 32px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: linear-gradient(135deg, rgba(251, 191, 36, 0.15), rgba(245, 158, 11, 0.1)) !important; border: 2px solid rgba(251, 191, 36, 0.4); border-radius: 16px; padding: 28px;">
+                                <tr>
+                                    <td align="center">
+                                        <p style="margin: 0 0 8px; color: #fbbf24 !important; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+                                            Tu Código de Edición
+                                        </p>
+                                        <p style="margin: 0 0 16px; color: #ffffff !important; font-size: 32px; font-weight: 800; letter-spacing: 6px; font-family: 'Courier New', monospace;">
+                                            {{.edit_code}}
+                                        </p>
+                                        <p style="margin: 0; color: rgba(255, 255, 255, 0.7) !important; font-size: 14px; line-height: 1.6;">
+                                            Con este código puedes editar el nombre de la reserva, la descripción,<br>y gestionar la lista de invitados.
+                                        </p>
+                                        <a href="{{.edit_url}}" style="display: inline-block; margin-top: 16px; background: linear-gradient(135deg, rgb(251, 191, 36), rgb(245, 158, 11)); color: #000000 !important; text-decoration: none; padding: 12px 28px; border-radius: 10px; font-weight: 600; font-size: 14px;">
+                                            Editar Lista
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- How it Works -->
+                    <tr>
+                        <td style="padding: 0 48px 40px; background-color: #141418 !important;">
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background: rgba(139, 92, 246, 0.05) !important; border: 1px solid rgba(139, 92, 246, 0.15); border-radius: 14px; padding: 24px;">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0 0 16px; color: #ffffff !important; font-size: 16px; font-weight: 700;">
+                                            ¿Cómo Funciona?
+                                        </p>
+                                        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr><td style="padding: 0 0 12px;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px;">• Comparte el link con tus invitados</p></td></tr>
+                                            <tr><td style="padding: 0 0 12px;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px;">• Ellos confirman su asistencia (RSVP)</p></td></tr>
+                                            <tr><td style="padding: 0 0 12px;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px;">• Cuando cierres la lista, se les notificará para pagar</p></td></tr>
+                                            <tr><td style="padding: 0;"><p style="margin: 0; color: rgba(255, 255, 255, 0.75) !important; font-size: 14px;">• Cada uno recibe su entrada con QR al pagar</p></td></tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 24px 48px; text-align: center; background-color: rgba(0, 0, 0, 0.4) !important; border-top: 1px solid rgba(255, 255, 255, 0.04);">
+                            <p style="margin: 0 0 8px; color: rgba(255, 255, 255, 0.4) !important; font-size: 12px;">
+                                © 2024 Pull. Todos los derechos reservados.
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>
