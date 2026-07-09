@@ -35,14 +35,14 @@ func (e *EmailService) SendGroupReservationConfirmation(ctx context.Context, dat
 	}
 
 	payload := map[string]interface{}{
-		"name":             data.OrganizerName,
-		"event_name":       data.EventName,
-		"event_date":       data.EventDate,
-		"guest_count":      data.GuestCount,
-		"total_amount":     fmt.Sprintf("%s %.2f", data.Currency, data.TotalAmount),
-		"management_code":  data.ManagementCode,
+		"name":              data.OrganizerName,
+		"event_name":        data.EventName,
+		"event_date":        data.EventDate,
+		"guest_count":       data.GuestCount,
+		"total_amount":      fmt.Sprintf("%s %.2f", data.Currency, data.TotalAmount),
+		"management_code":   data.ManagementCode,
 		"payment_link_code": data.PaymentLinkCode,
-		"track_url":        fmt.Sprintf("%s/es/group/track/%s", config.App.FrontendURL, data.PaymentLinkCode),
+		"track_url":         fmt.Sprintf("%s/es/group/track/%s", config.App.FrontendURL, data.PaymentLinkCode),
 	}
 
 	html, err := e.renderTemplate("group_reservation_pending", payload)
@@ -58,6 +58,59 @@ func (e *EmailService) SendGroupReservationConfirmation(ctx context.Context, dat
 		HTML:    html,
 		Tags: []EmailTag{
 			{Name: "type", Value: "group_reservation"},
+			{Name: "reservation", Value: data.ReservationNumber},
+		},
+	})
+	return err
+}
+
+// GroupReservationApprovedData carries the fields for the approval email —
+// the one that gives the organizer the shared group payment link.
+type GroupReservationApprovedData struct {
+	To                  string
+	OrganizerName       string
+	EventName           string
+	EventDate           string
+	ReservationNumber   string
+	PaymentLinkCode     string
+	GuestCount          int
+	HostPaidGuestsCount int
+}
+
+// SendGroupReservationApproved notifies the organizer their table was
+// approved and hands them the payment/tracking link to share with the group
+// so each member fills in their data and pays their part.
+func (e *EmailService) SendGroupReservationApproved(ctx context.Context, data GroupReservationApprovedData) error {
+	if e == nil {
+		return nil
+	}
+
+	payload := map[string]interface{}{
+		"organizer_name":         data.OrganizerName,
+		"event_name":             data.EventName,
+		"event_date":             data.EventDate,
+		"guest_count":            data.GuestCount,
+		"payment_link":           fmt.Sprintf("%s/es/group/track/%s", config.App.FrontendURL, data.PaymentLinkCode),
+		"has_host_paid_guests":   data.HostPaidGuestsCount > 0,
+		"host_paid_guests_count": data.HostPaidGuestsCount,
+		// The access-code flow is not enabled in the demo; guests complete
+		// their data directly from the tracking link.
+		"host_paid_access_code": data.PaymentLinkCode,
+	}
+
+	html, err := e.renderTemplate("group_reservation_approved", payload)
+	if err != nil {
+		return err
+	}
+
+	c, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	_, err = e.Send(c, EmailRequest{
+		To:      []string{data.To},
+		Subject: fmt.Sprintf("¡Reserva %s aprobada! — Link de pago del grupo", data.ReservationNumber),
+		HTML:    html,
+		Tags: []EmailTag{
+			{Name: "type", Value: "group_reservation_approved"},
 			{Name: "reservation", Value: data.ReservationNumber},
 		},
 	})

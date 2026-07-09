@@ -460,6 +460,38 @@ curl -s -H "Authorization: Bearer $TOKEN" "$API/<PATH>" | python -m json.tool | 
 
 ## Bug hunt — 12 root causes ya arreglados
 
+> **ACTUALIZACIÓN 2026-07-09:** hay 15 root causes MÁS (#13-27) cazados en
+> la sesión de verificación total — ver `HANDOFF.md` sección "Bug hunt log".
+> Los patrones que más se repiten (memorízalos):
+>
+> 1. **Columnas imaginarias.** Los handlers se escribieron contra un schema
+>    que no existe. Columnas reales: `events` no tiene `venue_id/
+>    organization_id/custom_location/table_capacity` (usa `location`,
+>    `capacity`); `ticket_types` usa `quantity_total` (no `quantity`) y
+>    `benefits` es `text[]`; `guest_list_types` usa `max_signups/
+>    current_signups` (no `max_capacity/current_count`) y no tiene
+>    `venue_id/updated_at`; `guest_list_signups` no tiene `venue_id/
+>    updated_at/checked_in/plus_ones_used/rejected_*`; `orders` no tiene
+>    `rejected_by`. La tenancy ES la base de datos por venue.
+> 2. **Params de ruta.** Las rutas móviles registran camelCase (`:eventId`,
+>    `:typeId`, `:signupId`) y los handlers leían `c.Param("id")` — 3
+>    incidencias del mismo bug. Lee siempre ambos.
+> 3. **Double-unwrap en el móvil.** Servicios que devuelven `response.data`
+>    y pantallas que hacen `.data` encima (tickets, signups). Normaliza en
+>    el servicio.
+> 4. **`Alert.alert` es no-op en RN-web** — shim en
+>    `PullMobileApp-GL/utils/webAlert.js`.
+> 5. **VIP list flow RETIRADO** (decisión de producto 2026-07). La app lo
+>    fuerza a false en `authService`; queda pendiente poner
+>    `venues.use_vip_list_flow=false` en la DB central.
+>
+> Flujos verificados end-to-end (UI web de la app + API): login/reload,
+> EventoDetalle (tickets+grupos+listas), editar evento, CRUD tickets, CRUD
+> listas, aprobar/rechazar orders (con tickets+email), aprobar/rechazar
+> grupos (con email de link de pago), aprobar/rechazar signups (con QR),
+> tracking web del grupo con pago por invitado, empleados, notificaciones,
+> logout.
+
 Léelo antes de tocar cualquier cosa. No reincidas en estos:
 
 **Backend / mobile compat layer:**
@@ -549,52 +581,42 @@ Léelo antes de tocar cualquier cosa. No reincidas en estos:
 
 ### P0 — verifica esto en cuanto abras la app móvil
 
-- [ ] **Recargar la app SIN cerrar sesión**. Debe pegarle a
-      `/auth/verify-token`, recibir `{type:"jwt", claims:{...}}`,
-      rehidratar `user`, cargar Eventos. Si sigue en blanco, `flyctl
-      logs` con el request-id.
-- [ ] **EventoDetalle** — tras el unwrap de shape, verifica foto,
-      nombre, fecha, descripción, lista tickets, lista guest-lists,
-      sección grupos.
-- [ ] **Orders tab** — filtro default `status=pending`. La demo tiene 3
-      pending; si dice "no orders", cambia el filtro a Confirmed o All.
+- [x] **Recargar la app SIN cerrar sesión** — VERIFICADO (2026-07-09).
+- [x] **EventoDetalle** — VERIFICADO: foto, nombre, fecha, descripción,
+      tickets con disponibilidad, grupos (mesas con precio M/F) y listas.
+- [x] **Orders tab** — VERIFICADO con filtros, búsqueda y detalle.
+- [ ] **Corregir dato central**: `venues.use_vip_list_flow=true` es config
+      stale (el flujo VIP list está RETIRADO). La app ya lo ignora, pero:
+      `PATCH <central>/rest/v1/venues?id=eq.8450e956-... {"use_vip_list_flow": false}`.
 
 ### P1 — pantallas que NUNCA se probaron desde UI
 
-- [ ] **EventoNuevo** — endpoint `POST /event/create-event-with-tickets`
-      DEPLOYADO. Payload: `{name, description, image, event_date,
-      start_time, end_time, ticket_limit, dress_code, min_age,
-      custom_location, ticket_types:[{name, price, quantity,
-      benefits}], table_capacity?}`. Response: `{success, event_id,
-      event, ticket_types}`. Sin test de UI. Primer bug probable: el
-      `POST /upload/event-image` es un stub que devuelve URL placeholder
-      de Unsplash (no persiste).
-- [ ] **EventoEditar** — `PUT /event/update-event/:eventId`. Acepta
-      subset del payload de crear.
-- [ ] **Borrar evento** — `DELETE /event/delete-event/:eventId`
-      (soft delete: `status="cancelled", deleted_at=now`). Deshacer:
-      `PUT` con `{status:"published", deleted_at:null}`.
-- [ ] **TicketsGestion** — endpoints deployed
-      (`GET/POST /ticket-types/event/:eventId`,
-      `PUT/DELETE /ticket-types/:ticketTypeId`).
-- [ ] **EmpleadoNuevo / EmpleadoEditar** — **NO EXISTEN endpoints
+- [~] **EventoNuevo** — backend verificado vía API (arreglado: columnas
+      fantasma, crea como `published`). El wizard de UI queda pendiente de
+      probar en dispositivo (image picker nativo) y `POST
+      /upload/event-image` sigue siendo stub (URL placeholder Unsplash).
+- [x] **EventoEditar** — VERIFICADO desde UI (2026-07-09).
+- [x] **Borrar evento** — VERIFICADO vía API (soft delete + undelete).
+- [x] **TicketsGestion** — VERIFICADO: UI + CRUD completo (regular y
+      grupo/mesa VIP).
+- [ ] **EmpleadoNuevo / EmpleadoEditar** — **SIGUEN SIN endpoints
       `POST /employees/create`, `PUT /employees/:id`, `DELETE`**. Sólo
       GET list y GET by id. Añadir cuando alguien pruebe.
-- [ ] **ReservaDetalle** (order detail) — endpoint existe, shape sin
-      verificar.
-- [ ] **GroupReservaDetalle** — shape sin verificar.
-- [ ] **GuestListDetalle** — probablemente hit
-      `GET /guest-lists/signup/:signupId` (ya existe main.go:448).
-- [ ] **VIPListDetalle / VIPListNuevo** — verificar qué llaman vs qué
-      hay registrado.
-- [ ] **Scanner QR real** — necesita ticket real. Compra por WebApp,
-      abre PDF del email, scanea QR desde la app.
+- [x] **ReservaDetalle** — VERIFICADO + approve (pipeline completo:
+      tickets + email) y reject desde UI.
+- [x] **GroupReservaDetalle** — VERIFICADO + approve desde UI (envía email
+      con link de pago del grupo).
+- [x] **GuestListDetalle** — VERIFICADO + approve (QR + email) y reject.
+- [x] ~~**VIPListDetalle / VIPListNuevo**~~ — RETIRADO (producto). Pantallas
+      muertas, candidatas a borrar.
+- [ ] **Scanner QR real** — necesita ticket real y cámara física. Compra
+      por WebApp, abre PDF del email, scanea QR desde la app en dispositivo.
 
 ### P2 — polish / smells
 
-- [ ] `PullMobileApp-GL/app/(tabs)/EventosList/index.js.backup` se coló
-      en un commit. Borrarlo.
-- [ ] `PullMobileApp-GL/expo.log` en gitignore.
+- [x] `PullMobileApp-GL/app/(tabs)/EventosList/index.js.backup` borrado
+      (2026-07-09).
+- [x] `PullMobileApp-GL/expo.log` en gitignore (2026-07-09).
 - [ ] `PullWebApp-GL` — 62 alertas dependabot en dev (33 high). Correr
       `npm audit fix` y PR.
 - [ ] Añadir `.env.production` al gitignore mobile — que EAS Build lea

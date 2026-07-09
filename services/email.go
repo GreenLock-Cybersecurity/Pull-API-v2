@@ -158,7 +158,9 @@ func (e *EmailService) Send(ctx context.Context, req EmailRequest) (string, erro
 		body["attachments"] = req.Attachments
 	}
 	if len(req.Tags) > 0 {
-		body["tags"] = req.Tags
+		// Resend only accepts ASCII letters, numbers, underscores and dashes
+		// in tag names/values — anything else 422s the whole send.
+		body["tags"] = sanitizeResendTags(req.Tags)
 	}
 
 	// OPTIMIZED: Use buffer pool to reduce allocations
@@ -205,6 +207,29 @@ func (e *EmailService) Send(ctx context.Context, req EmailRequest) (string, erro
 
 	log.Printf("[Email] Sent to %v: %s (ID: %s)", req.To, req.Subject, emailResp.ID)
 	return emailResp.ID, nil
+}
+
+// sanitizeResendTags maps arbitrary tag values to Resend's allowed charset
+// (ASCII letters, numbers, underscore, dash) by replacing anything else with
+// a dash.
+func sanitizeResendTags(tags []EmailTag) []EmailTag {
+	clean := func(s string) string {
+		out := make([]rune, 0, len(s))
+		for _, r := range s {
+			switch {
+			case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '_', r == '-':
+				out = append(out, r)
+			default:
+				out = append(out, '-')
+			}
+		}
+		return string(out)
+	}
+	result := make([]EmailTag, len(tags))
+	for i, t := range tags {
+		result[i] = EmailTag{Name: clean(t.Name), Value: clean(t.Value)}
+	}
+	return result
 }
 
 // =============================================
@@ -374,8 +399,8 @@ type TicketData struct {
 
 // Compiled templates cache
 var (
-	compiledTemplates     map[string]*template.Template
-	compileTemplatesOnce  sync.Once
+	compiledTemplates    map[string]*template.Template
+	compileTemplatesOnce sync.Once
 )
 
 // Email templates (raw strings)

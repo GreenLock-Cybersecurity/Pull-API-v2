@@ -62,11 +62,15 @@ func GetEventGuestLists(c *gin.Context) {
 		return
 	}
 
-	// Filter out full lists
+	// Filter out full lists. The schema columns are current_signups /
+	// max_signups; expose max_capacity / current_count aliases because the
+	// mobile edit form reads those names.
 	available := make([]map[string]interface{}, 0)
 	for _, gl := range guestListTypes {
-		currentCount := services.GetInt(gl, "current_count")
-		maxCapacity := services.GetInt(gl, "max_capacity")
+		currentCount := services.GetInt(gl, "current_signups")
+		maxCapacity := services.GetInt(gl, "max_signups")
+		gl["current_count"] = currentCount
+		gl["max_capacity"] = maxCapacity
 		if maxCapacity == 0 || currentCount < maxCapacity {
 			available = append(available, gl)
 		}
@@ -130,10 +134,10 @@ func GuestListSignup(c *gin.Context) {
 		return
 	}
 
-	// Check capacity
-	currentCount := services.GetInt(guestListType, "current_count")
-	maxCapacity := services.GetInt(guestListType, "max_capacity")
-	if currentCount >= maxCapacity {
+	// Check capacity (max_signups == 0 means unlimited)
+	currentCount := services.GetInt(guestListType, "current_signups")
+	maxCapacity := services.GetInt(guestListType, "max_signups")
+	if maxCapacity > 0 && currentCount >= maxCapacity {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "This guest list is full"})
 		return
 	}
@@ -445,28 +449,25 @@ func CreateGuestListType(c *gin.Context) {
 
 	client := services.DB.ForVenue(staffClaims.VenueID)
 
+	// guest_list_types real columns: event_id, name, description, benefits,
+	// max_signups, current_signups, signup_start, signup_end, is_active,
+	// created_at. There is no venue_id (per-venue DB), gender, entry_time,
+	// requires_approval or updated_at — those request fields are accepted for
+	// compatibility but not persisted.
 	guestListData := map[string]interface{}{
-		"event_id":          req.EventID,
-		"venue_id":          staffClaims.VenueID,
-		"name":              middleware.SanitizeName(req.Name),
-		"description":       req.Description,
-		"max_capacity":      req.MaxCapacity,
-		"current_count":     0,
-		"entry_benefit":     req.EntryBenefit,
-		"requires_approval": req.RequiresApproval,
-		"is_active":         true,
-		"created_at":        time.Now().Format(time.RFC3339),
-		"updated_at":        time.Now().Format(time.RFC3339),
+		"event_id":        req.EventID,
+		"name":            middleware.SanitizeName(req.Name),
+		"description":     req.Description,
+		"max_signups":     req.MaxCapacity,
+		"current_signups": 0,
+		"is_active":       true,
 	}
 
-	if req.EntryTime != "" {
-		guestListData["entry_time"] = req.EntryTime
-	}
-	if req.Gender != nil {
-		guestListData["gender"] = *req.Gender
+	if req.EntryBenefit != "" {
+		guestListData["benefits"] = req.EntryBenefit
 	}
 	if req.ClosesAt != "" {
-		guestListData["closes_at"] = req.ClosesAt
+		guestListData["signup_end"] = req.ClosesAt
 	}
 
 	result, err := client.InsertCtx(ctx, "guest_list_types", guestListData)
@@ -483,9 +484,13 @@ func CreateGuestListType(c *gin.Context) {
 }
 
 // UpdateGuestListType updates a guest list type
-// PUT /api/v1/staff/guest-lists/types/:id
+// PUT /api/v1/staff/guest-lists/types/:id (legacy) and
+// PUT /api/v1/guest-lists/types/:typeId (mobile app)
 func UpdateGuestListType(c *gin.Context) {
-	guestListID := c.Param("id")
+	guestListID := c.Param("typeId")
+	if guestListID == "" {
+		guestListID = c.Param("id")
+	}
 
 	var req struct {
 		Name             *string `json:"name"`
@@ -512,9 +517,9 @@ func UpdateGuestListType(c *gin.Context) {
 
 	client := services.DB.ForVenue(staffClaims.VenueID)
 
-	updates := map[string]interface{}{
-		"updated_at": time.Now().Format(time.RFC3339),
-	}
+	// Only real guest_list_types columns; the table has no updated_at,
+	// venue_id, gender or entry_time (see CreateGuestListType).
+	updates := map[string]interface{}{}
 
 	if req.Name != nil {
 		updates["name"] = middleware.SanitizeName(*req.Name)
@@ -523,30 +528,26 @@ func UpdateGuestListType(c *gin.Context) {
 		updates["description"] = *req.Description
 	}
 	if req.MaxCapacity != nil {
-		updates["max_capacity"] = *req.MaxCapacity
-	}
-	if req.EntryTime != nil {
-		updates["entry_time"] = *req.EntryTime
+		updates["max_signups"] = *req.MaxCapacity
 	}
 	if req.EntryBenefit != nil {
-		updates["entry_benefit"] = *req.EntryBenefit
-	}
-	if req.RequiresApproval != nil {
-		updates["requires_approval"] = *req.RequiresApproval
-	}
-	if req.Gender != nil {
-		updates["gender"] = *req.Gender
+		updates["benefits"] = *req.EntryBenefit
 	}
 	if req.IsActive != nil {
 		updates["is_active"] = *req.IsActive
 	}
 	if req.ClosesAt != nil {
-		updates["closes_at"] = *req.ClosesAt
+		updates["signup_end"] = *req.ClosesAt
+	}
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "no updates supplied"})
+		return
 	}
 
+	// Tenancy is the per-venue database itself — there is no venue_id column
+	// to filter on.
 	_, err := client.UpdateCtx(ctx, "guest_list_types", updates, map[string]interface{}{
-		"id":       guestListID,
-		"venue_id": staffClaims.VenueID,
+		"id": guestListID,
 	})
 
 	if err != nil {
@@ -561,9 +562,13 @@ func UpdateGuestListType(c *gin.Context) {
 }
 
 // DeleteGuestListType deletes a guest list type
-// DELETE /api/v1/staff/guest-lists/types/:id
+// DELETE /api/v1/staff/guest-lists/types/:id (legacy) and
+// DELETE /api/v1/guest-lists/types/:typeId (mobile app)
 func DeleteGuestListType(c *gin.Context) {
-	guestListID := c.Param("id")
+	guestListID := c.Param("typeId")
+	if guestListID == "" {
+		guestListID = c.Param("id")
+	}
 
 	claims, _ := c.Get("staff")
 	staffClaims := claims.(*models.StaffClaims)
@@ -573,13 +578,12 @@ func DeleteGuestListType(c *gin.Context) {
 
 	client := services.DB.ForVenue(staffClaims.VenueID)
 
-	// Soft delete - just deactivate
+	// Soft delete - just deactivate. No updated_at / venue_id columns in
+	// guest_list_types (per-venue DB).
 	_, err := client.UpdateCtx(ctx, "guest_list_types", map[string]interface{}{
-		"is_active":  false,
-		"updated_at": time.Now().Format(time.RFC3339),
+		"is_active": false,
 	}, map[string]interface{}{
-		"id":       guestListID,
-		"venue_id": staffClaims.VenueID,
+		"id": guestListID,
 	})
 
 	if err != nil {
@@ -616,7 +620,6 @@ func GetEventGuestListSignups(c *gin.Context) {
 
 	whereClause := map[string]interface{}{
 		"event_id": eventID,
-		"venue_id": staffClaims.VenueID,
 	}
 
 	if status != "" {
@@ -681,7 +684,11 @@ func GetEventGuestListSignups(c *gin.Context) {
 // ApproveGuestListSignup approves a signup
 // POST /api/v1/staff/guest-lists/signups/:id/approve
 func ApproveGuestListSignup(c *gin.Context) {
-	signupID := c.Param("id")
+	// Mobile route registers :signupId, legacy route :id — accept both.
+	signupID := c.Param("signupId")
+	if signupID == "" {
+		signupID = c.Param("id")
+	}
 
 	claims, _ := c.Get("staff")
 	staffClaims := claims.(*models.StaffClaims)
@@ -691,13 +698,11 @@ func ApproveGuestListSignup(c *gin.Context) {
 
 	client := services.DB.ForVenue(staffClaims.VenueID)
 
-	// Get signup first
+	// Get signup first. guest_list_signups has no venue_id column — the
+	// per-venue database is the tenancy boundary.
 	signup, err := client.QueryOne(ctx, "guest_list_signups", map[string]interface{}{
 		"select": "*",
-		"where": map[string]interface{}{
-			"id":       signupID,
-			"venue_id": staffClaims.VenueID,
-		},
+		"where":  map[string]interface{}{"id": signupID},
 	})
 
 	if err != nil || signup == nil {
@@ -710,12 +715,12 @@ func ApproveGuestListSignup(c *gin.Context) {
 		return
 	}
 
+	// No updated_at column in guest_list_signups.
 	now := time.Now()
 	_, err = client.UpdateCtx(ctx, "guest_list_signups", map[string]interface{}{
 		"status":      "approved",
 		"approved_by": staffClaims.UserID,
 		"approved_at": now.Format(time.RFC3339),
-		"updated_at":  now.Format(time.RFC3339),
 	}, map[string]interface{}{
 		"id": signupID,
 	})
@@ -763,7 +768,11 @@ func ApproveGuestListSignup(c *gin.Context) {
 // RejectGuestListSignup rejects a signup
 // POST /api/v1/staff/guest-lists/signups/:id/reject
 func RejectGuestListSignup(c *gin.Context) {
-	signupID := c.Param("id")
+	// Mobile route registers :signupId, legacy route :id — accept both.
+	signupID := c.Param("signupId")
+	if signupID == "" {
+		signupID = c.Param("id")
+	}
 
 	var req struct {
 		Reason string `json:"reason"`
@@ -778,21 +787,17 @@ func RejectGuestListSignup(c *gin.Context) {
 
 	client := services.DB.ForVenue(staffClaims.VenueID)
 
-	now := time.Now()
+	// guest_list_signups has no rejected_by/rejected_at/reject_reason or
+	// updated_at columns — keep the reason (and actor) in notes.
 	updates := map[string]interface{}{
-		"status":      "rejected",
-		"rejected_by": staffClaims.UserID,
-		"rejected_at": now.Format(time.RFC3339),
-		"updated_at":  now.Format(time.RFC3339),
+		"status": "rejected",
 	}
-
 	if req.Reason != "" {
-		updates["reject_reason"] = req.Reason
+		updates["notes"] = strings.TrimSpace("Rechazada: " + req.Reason + " (staff " + staffClaims.UserID + ")")
 	}
 
 	_, err := client.UpdateCtx(ctx, "guest_list_signups", updates, map[string]interface{}{
-		"id":       signupID,
-		"venue_id": staffClaims.VenueID,
+		"id": signupID,
 	})
 
 	if err != nil {
@@ -830,10 +835,7 @@ func CheckInGuestListSignup(c *gin.Context) {
 	// Find signup
 	signup, err := client.QueryOne(ctx, "guest_list_signups", map[string]interface{}{
 		"select": "*",
-		"where": map[string]interface{}{
-			"qr_token": req.QRToken,
-			"venue_id": staffClaims.VenueID,
-		},
+		"where":  map[string]interface{}{"qr_token": req.QRToken},
 	})
 
 	if err != nil || signup == nil {
@@ -883,12 +885,9 @@ func CheckInGuestListSignup(c *gin.Context) {
 
 	now := time.Now()
 	_, err = client.UpdateCtx(ctx, "guest_list_signups", map[string]interface{}{
-		"checked_in":     true,
-		"checked_in_at":  now.Format(time.RFC3339),
-		"checked_in_by":  staffClaims.UserID,
-		"status":         "checked_in",
-		"plus_ones_used": plusOnesUsed,
-		"updated_at":     now.Format(time.RFC3339),
+		"checked_in_at": now.Format(time.RFC3339),
+		"checked_in_by": staffClaims.UserID,
+		"status":        "checked_in",
 	}, map[string]interface{}{
 		"id": services.GetString(signup, "id"),
 	})
@@ -938,15 +937,11 @@ func UndoGuestListCheckIn(c *gin.Context) {
 	client := services.DB.ForVenue(staffClaims.VenueID)
 
 	_, err := client.UpdateCtx(ctx, "guest_list_signups", map[string]interface{}{
-		"checked_in":     false,
-		"checked_in_at":  nil,
-		"checked_in_by":  nil,
-		"status":         "approved",
-		"plus_ones_used": 0,
-		"updated_at":     time.Now().Format(time.RFC3339),
+		"checked_in_at": nil,
+		"checked_in_by": nil,
+		"status":        "approved",
 	}, map[string]interface{}{
-		"id":       signupID,
-		"venue_id": staffClaims.VenueID,
+		"id": signupID,
 	})
 
 	if err != nil {
@@ -1059,10 +1054,13 @@ func GetVenuePendingSignups(c *gin.Context) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			// NOTE: events has no event_date column (it's derived from
+			// start_datetime by EnrichEvent) — selecting it 42703s silently.
 			result, _ := client.QueryCtx(ctx, "events", map[string]interface{}{
-				"select": "id,name,event_date,image",
+				"select": "id,name,start_datetime,image",
 				"where":  map[string]interface{}{"id": services.FormatInClause(eventIDs)},
 			})
+			services.EnrichEvents(result)
 			mu.Lock()
 			eventDetails = result
 			mu.Unlock()
@@ -1073,8 +1071,9 @@ func GetVenuePendingSignups(c *gin.Context) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			// NOTE: real column is benefits, not entry_benefit (42703).
 			result, _ := client.QueryCtx(ctx, "guest_list_types", map[string]interface{}{
-				"select": "id,name,entry_benefit",
+				"select": "id,name,benefits",
 				"where":  map[string]interface{}{"id": services.FormatInClause(gltIDs)},
 			})
 			mu.Lock()
@@ -1095,10 +1094,18 @@ func GetVenuePendingSignups(c *gin.Context) {
 		gltMap[services.GetString(g, "id")] = g
 	}
 
-	// Enrich
+	// Enrich (plus the flat aliases the ReservasList card reads)
 	for i, s := range signups {
-		signups[i]["event"] = eventMap[services.GetString(s, "event_id")]
-		signups[i]["guest_list_type"] = gltMap[services.GetString(s, "guest_list_type_id")]
+		ev := eventMap[services.GetString(s, "event_id")]
+		glt := gltMap[services.GetString(s, "guest_list_type_id")]
+		signups[i]["event"] = ev
+		signups[i]["guest_list_type"] = glt
+		if ev != nil {
+			signups[i]["event_name"] = services.GetString(ev, "name")
+		}
+		if glt != nil {
+			signups[i]["guest_list_name"] = services.GetString(glt, "name")
+		}
 	}
 
 	totalPages := (totalCount + limit - 1) / limit
@@ -1131,10 +1138,7 @@ func GetGuestListSignup(c *gin.Context) {
 
 	signup, err := client.QueryOne(ctx, "guest_list_signups", map[string]interface{}{
 		"select": "*",
-		"where": map[string]interface{}{
-			"id":       signupID,
-			"venue_id": staffClaims.VenueID,
-		},
+		"where":  map[string]interface{}{"id": signupID},
 	})
 
 	if err != nil || signup == nil {
@@ -1142,19 +1146,29 @@ func GetGuestListSignup(c *gin.Context) {
 		return
 	}
 
-	// Get event info
+	// Get event info (event_date/start_time are derived by EnrichEvent, not
+	// real columns)
 	event, _ := client.QueryOne(ctx, "events", map[string]interface{}{
-		"select": "id,name,event_date,start_time,image",
+		"select": "id,name,start_datetime,end_datetime,image",
 		"where":  map[string]interface{}{"id": services.GetString(signup, "event_id")},
 	})
+	if event != nil {
+		services.EnrichEvent(event)
+	}
 	signup["event"] = event
 
-	// Get guest list type info
+	// Get guest list type info (real column is benefits)
 	glt, _ := client.QueryOne(ctx, "guest_list_types", map[string]interface{}{
-		"select": "id,name,entry_benefit,entry_time",
+		"select": "id,name,benefits",
 		"where":  map[string]interface{}{"id": services.GetString(signup, "guest_list_type_id")},
 	})
 	signup["guest_list_type"] = glt
+	if event != nil {
+		signup["event_name"] = services.GetString(event, "name")
+	}
+	if glt != nil {
+		signup["guest_list_name"] = services.GetString(glt, "name")
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -1191,11 +1205,9 @@ func BatchApproveGuestListSignups(c *gin.Context) {
 			"status":      "approved",
 			"approved_by": staffClaims.UserID,
 			"approved_at": now.Format(time.RFC3339),
-			"updated_at":  now.Format(time.RFC3339),
 		}, map[string]interface{}{
-			"id":       signupID,
-			"venue_id": staffClaims.VenueID,
-			"status":   "pending",
+			"id":     signupID,
+			"status": "pending",
 		})
 
 		if err != nil {
@@ -1235,26 +1247,22 @@ func BatchRejectGuestListSignups(c *gin.Context) {
 	defer cancel()
 
 	client := services.DB.ForVenue(staffClaims.VenueID)
-	now := time.Now()
 
 	rejected := 0
 	failed := 0
 
+	// guest_list_signups has no rejected_*/updated_at columns.
 	updateData := map[string]interface{}{
-		"status":      "rejected",
-		"rejected_by": staffClaims.UserID,
-		"rejected_at": now.Format(time.RFC3339),
-		"updated_at":  now.Format(time.RFC3339),
+		"status": "rejected",
 	}
 	if req.Reason != "" {
-		updateData["reject_reason"] = req.Reason
+		updateData["notes"] = "Rechazada: " + req.Reason
 	}
 
 	for _, signupID := range req.SignupIDs {
 		_, err := client.UpdateCtx(ctx, "guest_list_signups", updateData, map[string]interface{}{
-			"id":       signupID,
-			"venue_id": staffClaims.VenueID,
-			"status":   "pending",
+			"id":     signupID,
+			"status": "pending",
 		})
 
 		if err != nil {
@@ -1302,8 +1310,7 @@ func updateGuestListCountInternal(venueID, guestListTypeID string) {
 	}
 
 	client.UpdateNoReturn(ctx, "guest_list_types", map[string]interface{}{
-		"current_count": count,
-		"updated_at":    time.Now().Format(time.RFC3339),
+		"current_signups": count,
 	}, map[string]interface{}{
 		"id": guestListTypeID,
 	})

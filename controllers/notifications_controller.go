@@ -408,6 +408,15 @@ func GetVenueStaffNotifications(c *gin.Context) {
 
 	client := services.DB.ForVenue(venueID)
 
+	// The mobile app uses this endpoint as the SOURCE for its group
+	// reservation list (Bookings → Group filter and the bell dropdown), so
+	// for that type we serve live vip_list_reservations rows instead of
+	// relying on notification rows nobody inserts.
+	if notificationType == "group_reservation" {
+		serveGroupReservationsAsNotifications(c, ctx, client, status, page, limit)
+		return
+	}
+
 	// Build filter
 	filter := map[string]interface{}{
 		"select":      "*",
@@ -455,9 +464,115 @@ func GetVenueStaffNotifications(c *gin.Context) {
 	totalPages := (total + limit - 1) / limit
 
 	c.JSON(http.StatusOK, gin.H{
-		"success":      true,
-		"data":         notifications,
-		"unread_count": unreadCount,
+		"success": true,
+		"data":    notifications,
+		// The mobile services read `.notifications`; keep both keys.
+		"notifications": notifications,
+		"unread_count":  unreadCount,
+		"pagination": gin.H{
+			"current_page": page,
+			"total_pages":  totalPages,
+			"total_count":  total,
+			"has_more":     page < totalPages,
+			"limit":        limit,
+		},
+	})
+}
+
+// serveGroupReservationsAsNotifications backs the mobile "group_reservation"
+// notification queries with the actual vip_list_reservations rows, shaped the
+// way ReservasList renders them (reservation_id, user_name, quantity, total)
+// and the way the bell dropdown reads them (organizer_name, guest_count,
+// total_amount, event_name).
+func serveGroupReservationsAsNotifications(c *gin.Context, ctx context.Context, client *services.SupabaseClient, status string, page, limit int) {
+	where := map[string]interface{}{}
+	switch status {
+	case "", "All", "all":
+		// no status filter
+	case "pending":
+		where["status"] = "pending"
+	case "approved", "confirmed":
+		where["status"] = "confirmed"
+	case "rejected", "cancelled":
+		where["status"] = "cancelled"
+	default:
+		where["status"] = status
+	}
+
+	resvs, err := client.QueryCtx(ctx, "vip_list_reservations", map[string]interface{}{
+		"select": "*",
+		"where":  where,
+		"order":  "created_at.desc",
+	})
+	if err != nil {
+		middleware.SafeError(c, http.StatusInternalServerError, "Failed to fetch group reservations", err)
+		return
+	}
+
+	// Resolve event names in one query.
+	eventNames := map[string]string{}
+	ids := map[string]bool{}
+	for _, r := range resvs {
+		if eid := services.GetString(r, "event_id"); eid != "" {
+			ids[eid] = true
+		}
+	}
+	if len(ids) > 0 {
+		idList := make([]string, 0, len(ids))
+		for id := range ids {
+			idList = append(idList, id)
+		}
+		if events, _ := client.QueryCtx(ctx, "events", map[string]interface{}{
+			"select": "id,name",
+			"where":  map[string]interface{}{"id": "in.(" + strings.Join(idList, ",") + ")"},
+		}); events != nil {
+			for _, ev := range events {
+				eventNames[services.GetString(ev, "id")] = services.GetString(ev, "name")
+			}
+		}
+	}
+
+	items := make([]map[string]interface{}, 0, len(resvs))
+	for _, r := range resvs {
+		id := services.GetString(r, "id")
+		currency := services.GetString(r, "currency")
+		if currency == "" {
+			currency = "GTQ"
+		}
+		items = append(items, map[string]interface{}{
+			"id":             id,
+			"reservation_id": id,
+			"type":           "group_reservation",
+			"status":         services.GetString(r, "status"),
+			"user_name":      services.GetString(r, "organizer_name"),
+			"organizer_name": services.GetString(r, "organizer_name"),
+			"quantity":       services.GetInt(r, "max_guests"),
+			"guest_count":    services.GetInt(r, "max_guests"),
+			"total":          services.GetFloat64(r, "total"),
+			"total_amount":   services.GetFloat64(r, "total"),
+			"currency":       currency,
+			"event_name":     eventNames[services.GetString(r, "event_id")],
+			"created_at":     r["created_at"],
+		})
+	}
+
+	total := len(items)
+	start := (page - 1) * limit
+	end := start + limit
+	if start > total {
+		start = total
+	}
+	if end > total {
+		end = total
+	}
+	paginated := items[start:end]
+	totalPages := (total + limit - 1) / limit
+
+	c.JSON(http.StatusOK, gin.H{
+		"success":       true,
+		"data":          paginated,
+		"notifications": paginated,
+		"unread_count":  total,
 		"pagination": gin.H{
 			"current_page": page,
 			"total_pages":  totalPages,

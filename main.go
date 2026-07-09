@@ -646,6 +646,12 @@ func setupLegacyRoutes(v1 *gin.RouterGroup) {
 	v1.POST("/group-reservations/create", middleware.RateLimitCreate(), controllers.LegacyCreateGroupReservation)
 	v1.GET("/group-reservations/track/:code", middleware.RateLimitGeneral(), controllers.LegacyTrackGroupReservation)
 	v1.GET("/group-reservations/manage/:code", middleware.RateLimitGeneral(), controllers.LegacyTrackGroupReservation)
+	// Per-guest flow from the shared tracking link: each member completes
+	// their data and pays their share (WebApp group-guest-complete page).
+	v1.GET("/group-reservations/guest/:guestId", middleware.RateLimitGeneral(), middleware.ValidateUUIDParam("guestId"), controllers.LegacyGetGroupGuest)
+	v1.POST("/group-reservations/guest/:guestId/complete", middleware.RateLimitCreate(), middleware.ValidateUUIDParam("guestId"), controllers.LegacyCompleteGroupGuest)
+	v1.POST("/group-reservations/guest/:guestId/pay", middleware.RateLimitCreate(), middleware.ValidateUUIDParam("guestId"), controllers.LegacyPayGroupGuest)
+	v1.POST("/group-reservations/guest/:guestId/verify-access-code", middleware.RateLimitGeneral(), middleware.ValidateUUIDParam("guestId"), controllers.LegacyVerifyGroupGuestAccessCode)
 
 	// Orders (legacy paths)
 	v1.POST("/orders/create-pending-order", middleware.RateLimitCreate(), controllers.LegacyCreatePendingOrder)
@@ -663,4 +669,3 @@ func setupWebhookRoutes(router *gin.Engine) {
 		webhooks.POST("/neonet/:venue_id", middleware.ValidateUUIDParam("venue_id"), controllers.HandleNeoNetWebhook)
 	}
 }
-

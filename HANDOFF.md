@@ -223,6 +223,150 @@ symptom again you probably touched an adjacent handler and need the same fix.
     silently because the field is `venue.UseVipListFlow` (lowercase p),
     not `UseVIPListFlow`.
 
+13. **EventoDetalle tickets always empty (mobile)** — `ticketTypeService.
+    getTicketTypesByEvent` returned the bare array but both EventoDetalle
+    and TicketsGestion did `response.data || []` on top (double unwrap →
+    always `[]`). Service now wraps as `{success, data}` like
+    guestListService.
+    (2026-07-09, fixed in PullMobileApp-GL)
+
+14. **`/ticket-types/event/:eventId` returned raw DB columns** — the app
+    renders `available_quantity/initial_quantity/is_group/min_quantity/
+    max_quantity/has_gender_pricing/male_price/female_price` and expects
+    `benefits` as a string. Now the GET filters `is_active=true` (deleted
+    types kept showing), lifts mobile extras persisted in `metadata`,
+    runs `EnrichTicketTypes`, joins `benefits[]` to "a, b, c", and appends
+    `event_vip_ticket_types` rows as `is_group=true` group tickets (the
+    same Mesa Premium rows the WebApp sells). POST/PUT/DELETE now map
+    `initialQuantity→quantity_total`, `minQuantity/maxQuantity→
+    min_per_order/max_per_order`, benefits string→text[], gender pricing→
+    `metadata`, and route `isGroup=true` writes to `event_vip_ticket_types`
+    (PUT/DELETE fall through to that table when the id isn't in
+    ticket_types).
+
+15. **`create-event-with-tickets` never worked** — inserted `custom_location`,
+    `organization_id`, `venue_id` (none exist in `events`; the venue DB is
+    single-tenant and the column is `location`), nested tickets used the
+    nonexistent `quantity` column and string `benefits`, and `status:"draft"`
+    would hide the new event from the published-only lists. All fixed;
+    creates as `published`. `update-event` had the same `custom_location`
+    and `table_capacity` problems.
+
+16. **`table_capacity` has no column in `events`** — it was synthesized as 0
+    by `EnrichEvent`. Writes are now ignored (tables live in
+    `event_vip_ticket_types`) and `get-event-details` reports the real
+    count: sum of `event_vip_ticket_types.quantity_total`.
+
+17. **Guest list types CRUD written against an imaginary schema** — real
+    columns are `max_signups/current_signups/benefits/signup_start/
+    signup_end` with NO `venue_id/updated_at/gender/entry_time/
+    requires_approval/max_capacity/current_count`. Create 500'd
+    (PGRST204), update/delete no-op'd twice over: fake columns AND
+    `c.Param("id")` while the mobile route registers `:typeId` (same class
+    as bug #3). Capacity checks read `current_count` (always 0) — the
+    staff signup path reported "guest list is full" for every list
+    (`0 >= 0`). All mapped to real columns; GET now also exposes
+    `max_capacity/current_count` aliases because the mobile edit form
+    reads those names.
+
+18. **Notification poller multiplied per screen (mobile)** — every screen's
+    `CustomHeader` bell mounted its own 30s `setInterval` + immediate
+    fetch, and expo-router keeps stacked screens mounted → 2 requests/30s
+    per stacked screen plus a burst on every navigation. Polling moved to
+    a single module-level poller in `useNotificationStore`
+    (`startPolling/stopPolling`, 10s throttle for mount bursts); logout
+    stops it. Steady state now: 1 pair of requests per 30s total.
+
+19. **Web (dev) reload logged staff out** — `expo-secure-store` throws on
+    web, the catch swallowed it and the token was never persisted.
+    `secureStorage` now falls back to AsyncStorage (localStorage) on web
+    only; native keeps SecureStore.
+
+20. **`use_vip_list_flow` inconsistent between login and reload (OPEN)** —
+    the central `venues` row for Aurora Hall has `use_vip_list_flow=true`,
+    so `verify-token` claims flip the staff app into VIP mode after a
+    reload (individual-ticket sections hidden), while a fresh login builds
+    `user` from the `employee` object (no flag → regular mode). The WebApp
+    never sees the flag (legacy `custom_location` doesn't include it) and
+    sells individual tickets, so `true` looks like stale config. Proposed
+    fix (needs a human to run it — prod data):
+    `PATCH <central>/rest/v1/venues?id=eq.8450e956-... {"use_vip_list_flow": false}`.
+
+21. **Approving an order didn't create tickets or notify the buyer** —
+    `MobileApproveOrder` just flipped status to confirmed. Now it runs the
+    same pipeline as customer payment (ConfirmPayment): tickets created,
+    email with QRs/PDF sent. `MobileRejectOrder` 500'd on the nonexistent
+    `rejected_by` column — the acting staff id now goes into
+    `cancellation_reason`.
+    (2026-07-09)
+
+22. **Approving a group reservation sent no payment-link email** — added
+    `SendGroupReservationApproved` (embedded `group_reservation_approved.html`
+    template) fired from `MobileApproveGroupReservation`, with the
+    `/es/group/track/<code>` link, guest count and host-paid count. Also
+    persists `approved_at`/`approved_by` now.
+
+23. **The per-guest complete/pay endpoints didn't exist** — the WebApp
+    guest-complete page calls `GET /group-reservations/guest/:guestId`,
+    `POST .../complete`, `POST .../pay`, `POST .../verify-access-code`;
+    none were registered (the whole "each member fills their data and pays"
+    flow 404'd). Implemented in legacy_compat (mock payment in DEMO_MODE,
+    updates `confirmed_guests`, next_action state machine). Note:
+    `vip_list_guests` has NO verification_code column — the flow relies on
+    unguessable guest UUIDs and `requires_access_code:false`.
+
+24. **Tracking page showed Q0.00/NaN and never "approved"** — the page reads
+    flat aliases on the reservation (`event_name`, `event_date`, `venue_name`,
+    `guest_count`, `total_amount`, `pending_amount`, numeric `status_id`
+    where 7/8 = approved) that the raw `vip_list_reservations` row doesn't
+    have. `LegacyTrackGroupReservation` now enriches all of them plus
+    per-guest aliases (`amount_due`, `host_pays`, `verification_code`).
+
+25. **Resend fallback 422'd on every send** — tags with spaces/accents
+    (e.g. event names) violate Resend's charset. Tags are now sanitized in
+    the Resend path. (Brevo remains primary; note Brevo rejects sends from
+    non-authorized IPs, so local-dev emails only work if you whitelist your
+    IP at app.brevo.com/security/authorised_ips.)
+
+26. **VIP list flow retired in the mobile app** — `use_vip_list_flow` is
+    forced to `false` in authService (both login and verify-token paths) so
+    stale venue config can't flip the staff UI into the old VIP-only mode.
+    The central venues row still says `true` — see #20 for the pending
+    data fix.
+
+27. **Mobile UI sweep (2026-07-09, second pass)** — full staff-app flow now
+    works end-to-end in the browser preview. Fixes found on the way:
+    - `Alert.alert` is a NO-OP on RN-web → every approve/reject/delete
+      confirm silently did nothing. Added `utils/webAlert.js` shim
+      (window.confirm/alert on web only), imported from `app/_layout.js`.
+    - Rehydrated sessions lost the staff name (avatar showed "U"):
+      authService's verify-token mapping didn't copy `claims.name`.
+    - `/orders/details/:orderId` now returns nested `user` and `event`
+      objects (ReservaDetalle showed "Event Name/No email" placeholders).
+    - Bookings → Group filter was ALWAYS empty: it reads
+      `staff-notifications?type=group_reservation` but (a) the response key
+      is `data` while the app reads `.notifications`, and (b) nothing ever
+      inserted group_reservation notification rows. The endpoint now serves
+      live `vip_list_reservations` rows shaped for the app
+      (reservation_id/user_name/quantity/total + organizer aliases), and the
+      generic path returns both `data` and `notifications` keys.
+    - `/group-reservations/details/:id` returns a flat object under `data`
+      (status_name, total_amount, pending_amount, guest_count, event/venue
+      names, guests embedded) — GroupReservaDetalle showed "not found".
+    - Guest List filter crashed (`data.filter is not a function`):
+      getPendingSignups double-wraps the `{success,data,pagination}` body.
+      Normalized in the mobile service.
+    - GetVenuePendingSignups' enrichment silently 42703'd (selected
+      `event_date` on events and `entry_benefit` on guest_list_types);
+      fixed + added flat `guest_list_name`/`event_name` aliases.
+    - Signup approve/reject/get/check-in/undo/batch: all filtered by the
+      nonexistent `guest_list_signups.venue_id`, wrote nonexistent columns
+      (`updated_at`, `checked_in`, `plus_ones_used`, `rejected_by/at`,
+      `reject_reason`), and the mobile routes register `:signupId` while
+      handlers read `c.Param("id")` (bug #3 pattern — third occurrence).
+      All fixed; reject reason goes into `notes`. Approve → status
+      `approved` + QR + confirmation email verified.
+
 ### WebApp (customer)
 
 - Instagram optional field in all 3 flows (individual/group/list) with

@@ -104,36 +104,26 @@ func MobileCreateEventWithTickets(c *gin.Context) {
 	name := services.GetString(body, "name")
 	slug := slugify(name) + "-" + time.Now().Format("20060102150405")
 
-	// organization_id is required for inserts in this schema. Pull it from JWT
-	// claims, falling back to the venue row if not present.
-	orgID := c.GetString("organization_id")
-	if orgID == "" {
-		v, _ := services.DB.Central().QueryOne(ctx, "venues", map[string]interface{}{
-			"select": "organization_id", "where": map[string]interface{}{"id": venueID},
-		})
-		if v != nil {
-			orgID = services.GetString(v, "organization_id")
-		}
-	}
-
+	// The venue DB is single-tenant: events carries no venue_id or
+	// organization_id column (tenancy is the database itself).
 	insertPayload := map[string]interface{}{
-		"venue_id":        venueID,
-		"organization_id": orgID,
-		"name":            name,
-		"description":     services.GetString(body, "description"),
-		"slug":            slug,
-		"start_datetime":  startDT,
-		"end_datetime":    endDT,
-		"status":          "draft",
-		"image":           services.GetString(body, "image"),
-		"dress_code":      services.GetString(body, "dress_code"),
-		"min_age":         services.GetInt(body, "min_age"),
-		"custom_location": services.GetString(body, "custom_location"),
-		"capacity":        services.GetInt(body, "ticket_limit"),
+		"name":           name,
+		"description":    services.GetString(body, "description"),
+		"slug":           slug,
+		"start_datetime": startDT,
+		"end_datetime":   endDT,
+		// The staff app has no separate publish step — a created event must
+		// show up in the (published-only) event lists right away.
+		"status":     "published",
+		"image":      services.GetString(body, "image"),
+		"dress_code": services.GetString(body, "dress_code"),
+		"min_age":    services.GetInt(body, "min_age"),
+		// The app calls it custom_location; the events schema column is location.
+		"location": services.GetString(body, "custom_location"),
+		"capacity": services.GetInt(body, "ticket_limit"),
 	}
-	if tableCap, ok := body["table_capacity"]; ok {
-		insertPayload["table_capacity"] = tableCap
-	}
+	// table_capacity has no backing column in events — tables are the
+	// event_vip_ticket_types rows. Accepted in the payload but not persisted.
 
 	created, err := venueDB.InsertCtx(ctx, "events", insertPayload)
 	if err != nil || created == nil {
@@ -162,13 +152,20 @@ func MobileCreateEventWithTickets(c *gin.Context) {
 			fmt.Sscanf(v, "%f", &p)
 			price = p
 		}
+		quantity := services.GetInt(tt, "quantity")
+		if quantity == 0 {
+			quantity = services.GetInt(tt, "initialQuantity")
+		}
 		ttPayload := map[string]interface{}{
-			"event_id":  eventID,
-			"name":      services.GetString(tt, "name"),
-			"price":     price,
-			"quantity":  services.GetInt(tt, "quantity"),
-			"benefits":  services.GetString(tt, "benefits"),
-			"is_active": true,
+			"event_id":       eventID,
+			"name":           services.GetString(tt, "name"),
+			"price":          price,
+			"quantity_total": quantity,
+			"benefits":       splitBenefits(services.GetString(tt, "benefits")),
+			"min_per_order":  1,
+			"max_per_order":  10,
+			"is_active":      true,
+			"is_visible":     true,
 		}
 		row, terr := venueDB.InsertCtx(ctx, "ticket_types", ttPayload)
 		if terr == nil && row != nil {
@@ -206,10 +203,14 @@ func MobileUpdateEvent(c *gin.Context) {
 		return
 	}
 	updates := map[string]interface{}{}
-	for _, k := range []string{"name", "description", "image", "dress_code", "custom_location", "status", "deleted_at"} {
+	for _, k := range []string{"name", "description", "image", "dress_code", "status", "deleted_at"} {
 		if v, ok := body[k]; ok {
 			updates[k] = v
 		}
+	}
+	// The app calls it custom_location; the events schema column is location.
+	if v, ok := body["custom_location"]; ok {
+		updates["location"] = v
 	}
 	if v, ok := body["min_age"]; ok {
 		updates["min_age"] = v
@@ -217,9 +218,8 @@ func MobileUpdateEvent(c *gin.Context) {
 	if v, ok := body["ticket_limit"]; ok {
 		updates["capacity"] = v
 	}
-	if v, ok := body["table_capacity"]; ok {
-		updates["table_capacity"] = v
-	}
+	// table_capacity has no backing column in events; ignore it (tables are
+	// managed as event_vip_ticket_types rows).
 	startDT, endDT := combineDateTime(
 		services.GetString(body, "event_date"),
 		services.GetString(body, "start_time"),
@@ -355,6 +355,20 @@ func MobileGetEventDetails(c *gin.Context) {
 	}
 	services.EnrichEvent(event)
 	event["venue_id"] = venueID
+
+	// table_capacity has no events column — report the real table count: the
+	// sum of VIP table types configured for this event.
+	if vips, err := venueDB.QueryCtx(ctx, "event_vip_ticket_types", map[string]interface{}{
+		"select": "quantity_total",
+		"where":  map[string]interface{}{"event_id": services.GetString(event, "id")},
+	}); err == nil {
+		tables := 0
+		for _, vt := range vips {
+			tables += services.GetInt(vt, "quantity_total")
+		}
+		event["table_capacity"] = tables
+	}
+
 	// PullMobileApp-GL's eventService reads response.data directly, expecting
 	// top-level event fields. Wrapping in {event: ...} would leave the UI
 	// blank because currentEvent.name etc. would be undefined.
@@ -429,11 +443,11 @@ func MobileValidateTicket(c *gin.Context) {
 	}
 	if checkedAt := services.GetString(ticket, "checked_in_at"); checkedAt != "" {
 		c.JSON(http.StatusOK, gin.H{
-			"valid":           false,
-			"already_used":    true,
-			"checked_in_at":   checkedAt,
-			"message":         "Ticket ya fue usado",
-			"ticket":          ticket,
+			"valid":         false,
+			"already_used":  true,
+			"checked_in_at": checkedAt,
+			"message":       "Ticket ya fue usado",
+			"ticket":        ticket,
 		})
 		return
 	}
@@ -565,7 +579,7 @@ func MobileApproveOrder(c *gin.Context) {
 	orderID := c.Param("orderId")
 
 	current, _ := venueDB.QueryOne(ctx, "orders", map[string]interface{}{
-		"select": "id,status", "where": map[string]interface{}{"id": orderID},
+		"select": "id,status,stripe_session_id", "where": map[string]interface{}{"id": orderID},
 	})
 	if current == nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
@@ -576,16 +590,28 @@ func MobileApproveOrder(c *gin.Context) {
 		return
 	}
 
-	result, err := venueDB.UpdateCtx(ctx, "orders", map[string]interface{}{
-		"status":  "confirmed",
-		"paid_at": time.Now().Format(time.RFC3339),
-	}, map[string]interface{}{"id": orderID})
-	if err != nil || len(result) == 0 {
-		log.Printf("[Mobile/ApproveOrder] failed venue=%s id=%s err=%v rows=%d", venueID, orderID, err, len(result))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to approve", "details": fmt.Sprintf("%v", err)})
-		return
+	// Approving means "accept and settle" — run the same pipeline as the
+	// customer payment confirmation (ConfirmPayment) so the tickets get
+	// created and the buyer receives the email with QR codes + PDF. Just
+	// flipping the status (the old behavior) confirmed orders that had no
+	// tickets and no notification to the customer.
+	sessionID := services.GetString(current, "stripe_session_id")
+	if sessionID == "" {
+		code, _ := generateRandomCode(24)
+		sessionID = "mock_" + code
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "order": result[0]})
+	if s := services.GetString(current, "status"); s == "pending" || s == "" {
+		venueDB.UpdateNoReturn(ctx, "orders", map[string]interface{}{
+			"status":            "processing",
+			"stripe_session_id": sessionID,
+			"payment_gateway":   "stripe",
+		}, map[string]interface{}{"id": orderID})
+	}
+	q := c.Request.URL.Query()
+	q.Set("session_id", sessionID)
+	q.Set("venue_id", venueID)
+	c.Request.URL.RawQuery = q.Encode()
+	ConfirmPayment(c)
 }
 
 // MobileRejectOrder handles POST /orders/:orderId/reject
@@ -598,17 +624,25 @@ func MobileRejectOrder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "venue_id missing"})
 		return
 	}
-	var body struct{ Reason string `json:"reason"` }
+	var body struct {
+		Reason string `json:"reason"`
+	}
 	_ = c.ShouldBindJSON(&body)
 
 	venueDB := services.DB.ForVenue(venueID)
+	reason := body.Reason
+	// orders has no rejected_by column; keep the acting staff in the reason
+	// trail instead.
+	if staffID != "" {
+		reason = strings.TrimSpace(reason + " (rechazada por staff " + staffID + ")")
+	}
 	result, err := venueDB.UpdateCtx(ctx, "orders", map[string]interface{}{
 		"status":              "cancelled",
 		"cancelled_at":        time.Now().Format(time.RFC3339),
-		"cancellation_reason": body.Reason,
-		"rejected_by":         staffID,
+		"cancellation_reason": reason,
 	}, map[string]interface{}{"id": c.Param("orderId")})
 	if err != nil || len(result) == 0 {
+		log.Printf("[Mobile/RejectOrder] failed id=%s err=%v rows=%d", c.Param("orderId"), err, len(result))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reject"})
 		return
 	}
@@ -643,7 +677,55 @@ func MobileGetGroupReservationDetails(c *gin.Context) {
 	bottles, _ := venueDB.QueryCtx(ctx, "vip_list_bottles", map[string]interface{}{
 		"select": "*", "where": map[string]interface{}{"reservation_id": resvID},
 	})
+	if guests == nil {
+		guests = []map[string]interface{}{}
+	}
+	if bottles == nil {
+		bottles = []map[string]interface{}{}
+	}
+
+	// GroupReservaDetalle reads a flat object under `data`: status_name,
+	// total_amount, guest_count, pending_amount, event/venue names and the
+	// guests embedded.
+	pending := 0.0
+	for _, g := range guests {
+		if !services.GetBool(g, "has_paid") {
+			pending += services.GetFloat64(g, "ticket_price")
+		}
+	}
+	eventName, venueName := "", ""
+	if ev, _ := venueDB.QueryOne(ctx, "events", map[string]interface{}{
+		"select": "name,location",
+		"where":  map[string]interface{}{"id": services.GetString(resv, "event_id")},
+	}); ev != nil {
+		eventName = services.GetString(ev, "name")
+		venueName = services.GetString(ev, "location")
+	}
+	currency := services.GetString(resv, "currency")
+	if currency == "" {
+		currency = "GTQ"
+	}
+	guestCount := len(guests)
+	if guestCount == 0 {
+		guestCount = services.GetInt(resv, "max_guests")
+	}
+
+	flat := map[string]interface{}{}
+	for k, v := range resv {
+		flat[k] = v
+	}
+	flat["status_name"] = services.GetString(resv, "status")
+	flat["total_amount"] = services.GetFloat64(resv, "total")
+	flat["pending_amount"] = pending
+	flat["guest_count"] = guestCount
+	flat["event_name"] = eventName
+	flat["venue_name"] = venueName
+	flat["currency"] = currency
+	flat["guests"] = guests
+	flat["bottles"] = bottles
+
 	c.JSON(http.StatusOK, gin.H{
+		"data":        flat,
 		"reservation": resv,
 		"guests":      guests,
 		"bottles":     bottles,
@@ -671,15 +753,72 @@ func MobileApproveGroupReservation(c *gin.Context) {
 	}
 	id := c.Param("id")
 	result, err := venueDB.UpdateCtx(ctx, "vip_list_reservations", map[string]interface{}{
-		"status": "confirmed",
+		"status":      "confirmed",
+		"approved_at": time.Now().Format(time.RFC3339),
+		"approved_by": nullableEnum(staffID),
 	}, map[string]interface{}{"id": id})
 	if err != nil || len(result) == 0 {
 		log.Printf("[Mobile/ApproveGroupReservation] failed venue=%s id=%s err=%v rows=%d", venueID, id, err, len(result))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to approve", "details": fmt.Sprintf("%v", err)})
 		return
 	}
-	_ = staffID
-	c.JSON(http.StatusOK, gin.H{"success": true, "reservation": result[0]})
+	resv := result[0]
+
+	// Send the organizer the approval email with the shared group payment
+	// link (fire-and-forget so the staff app isn't blocked on Brevo).
+	go func() {
+		bgCtx, bgCancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer bgCancel()
+		if services.Email == nil {
+			return
+		}
+		orgEmail := services.GetString(resv, "organizer_email")
+		if orgEmail == "" {
+			log.Printf("[Mobile/ApproveGroupReservation] no organizer_email for %s — approval email skipped", id)
+			return
+		}
+		reservationNumber := services.GetString(resv, "reservation_number")
+		code := strings.TrimPrefix(reservationNumber, "GRP-")
+
+		eventName, eventDate := "", ""
+		if ev, _ := venueDB.QueryOne(bgCtx, "events", map[string]interface{}{
+			"select": "name,start_datetime,end_datetime",
+			"where":  map[string]interface{}{"id": services.GetString(resv, "event_id")},
+		}); ev != nil {
+			eventName = services.GetString(ev, "name")
+			services.EnrichEvent(ev)
+			eventDate = services.GetString(ev, "event_date")
+		}
+
+		hostPaid := 0
+		guestCount := services.GetInt(resv, "max_guests")
+		if guests, _ := venueDB.QueryCtx(bgCtx, "vip_list_guests", map[string]interface{}{
+			"select": "id,has_paid,paid_at",
+			"where":  map[string]interface{}{"reservation_id": id},
+		}); len(guests) > 0 {
+			guestCount = len(guests)
+			for _, g := range guests {
+				if services.GetBool(g, "has_paid") && services.GetString(g, "paid_at") == "" {
+					hostPaid++
+				}
+			}
+		}
+
+		if err := services.Email.SendGroupReservationApproved(bgCtx, services.GroupReservationApprovedData{
+			To:                  orgEmail,
+			OrganizerName:       services.GetString(resv, "organizer_name"),
+			EventName:           eventName,
+			EventDate:           eventDate,
+			ReservationNumber:   reservationNumber,
+			PaymentLinkCode:     code,
+			GuestCount:          guestCount,
+			HostPaidGuestsCount: hostPaid,
+		}); err != nil {
+			log.Printf("[Mobile/ApproveGroupReservation] approval email failed for %s: %v", id, err)
+		}
+	}()
+
+	c.JSON(http.StatusOK, gin.H{"success": true, "reservation": resv})
 }
 
 // MobileRejectGroupReservation handles POST /group-reservations/:id/reject
@@ -693,7 +832,9 @@ func MobileRejectGroupReservation(c *gin.Context) {
 		return
 	}
 	venueDB := services.DB.ForVenue(venueID)
-	var body struct{ Reason string `json:"reason"` }
+	var body struct {
+		Reason string `json:"reason"`
+	}
 	_ = c.ShouldBindJSON(&body)
 	result, err := venueDB.UpdateCtx(ctx, "vip_list_reservations", map[string]interface{}{
 		"status": "cancelled",
@@ -891,9 +1032,9 @@ func MobileRejectGuestListSignup(c *gin.Context) {
 	}
 	_ = c.ShouldBindJSON(&body)
 	result, err := venueDB.UpdateCtx(ctx, "guest_list_signups", map[string]interface{}{
-		"status":            "rejected",
-		"rejection_reason":  body.Reason,
-		"rejected_at":       time.Now().Format(time.RFC3339),
+		"status":           "rejected",
+		"rejection_reason": body.Reason,
+		"rejected_at":      time.Now().Format(time.RFC3339),
 	}, map[string]interface{}{"id": c.Param("signupId")})
 	if err != nil || len(result) == 0 {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reject"})
@@ -1223,9 +1364,10 @@ func MobileGetTicketTypesByEvent(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid venue"})
 		return
 	}
+	eventID := c.Param("eventId")
 	tts, err := venueDB.QueryCtx(ctx, "ticket_types", map[string]interface{}{
-		"select": "*",
-		"where":  map[string]interface{}{"event_id": c.Param("eventId")},
+		"select": services.TicketTypeSelectColumns + ",metadata",
+		"where":  map[string]interface{}{"event_id": eventID, "is_active": true},
 		"order":  "price.asc",
 	})
 	if err != nil {
@@ -1235,7 +1377,93 @@ func MobileGetTicketTypesByEvent(c *gin.Context) {
 	if tts == nil {
 		tts = []map[string]interface{}{}
 	}
+	for _, tt := range tts {
+		liftTicketTypeMetadata(tt)
+	}
+	services.EnrichTicketTypes(tts)
+	for _, tt := range tts {
+		tt["benefits"] = flattenBenefits(tt["benefits"])
+	}
+
+	// Surface VIP table types as group tickets. These are the same rows the
+	// WebApp sells as "Mesa Premium", so staff see the groups clients can book.
+	vips, err := venueDB.QueryCtx(ctx, "event_vip_ticket_types", map[string]interface{}{
+		"select": services.VIPTicketTypeSelectColumns,
+		"where":  map[string]interface{}{"event_id": eventID},
+		"order":  "sort_order.asc",
+	})
+	if err != nil {
+		log.Printf("[Mobile/GetTicketTypes] vip types err=%v", err)
+	}
+	services.EnrichVIPTicketTypes(vips)
+	for _, vt := range vips {
+		total := services.GetInt(vt, "quantity_total")
+		available := total - services.GetInt(vt, "quantity_sold")
+		if available < 0 {
+			available = 0
+		}
+		vt["is_group"] = true
+		vt["is_vip_table"] = true
+		vt["has_gender_pricing"] = true
+		vt["price"] = services.GetFloat64(vt, "price_male")
+		vt["available_quantity"] = available
+		vt["initial_quantity"] = total
+		// The WebApp group flow reserves tables of 4+; mirror that here.
+		if services.GetInt(vt, "min_quantity") <= 1 {
+			vt["min_quantity"] = 4
+		}
+		vt["benefits"] = services.GetString(vt, "description")
+		tts = append(tts, vt)
+	}
 	c.JSON(http.StatusOK, tts)
+}
+
+// liftTicketTypeMetadata copies mobile-only fields persisted in the metadata
+// jsonb column (is_group, gender pricing, expenses) to the row's top level so
+// EnrichTicketType and the app can read them.
+func liftTicketTypeMetadata(tt map[string]interface{}) {
+	meta, _ := tt["metadata"].(map[string]interface{})
+	if meta == nil {
+		return
+	}
+	for _, k := range []string{"is_group", "has_gender_pricing", "male_price", "female_price", "expenses"} {
+		if v, ok := meta[k]; ok {
+			if _, exists := tt[k]; !exists {
+				tt[k] = v
+			}
+		}
+	}
+}
+
+// flattenBenefits renders the benefits column (text[] in the venue DB) as the
+// comma-separated string the mobile app shows and edits.
+func flattenBenefits(v interface{}) string {
+	switch b := v.(type) {
+	case string:
+		return b
+	case []interface{}:
+		parts := make([]string, 0, len(b))
+		for _, item := range b {
+			if s, ok := item.(string); ok && s != "" {
+				parts = append(parts, s)
+			}
+		}
+		return strings.Join(parts, ", ")
+	default:
+		return ""
+	}
+}
+
+// splitBenefits converts the app's comma-separated benefits string back to
+// the text[] shape the venue DB stores.
+func splitBenefits(s string) []string {
+	parts := []string{}
+	for _, p := range strings.Split(s, ",") {
+		if trimmed := strings.TrimSpace(p); trimmed != "" {
+			parts = append(parts, trimmed)
+		}
+	}
+	return parts
 }
 
 // MobileCreateTicketType handles POST /ticket-types/event/:eventId.
@@ -1252,22 +1480,67 @@ func MobileCreateTicketType(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 		return
 	}
-	var price float64
-	switch v := body["price"].(type) {
-	case float64:
-		price = v
-	case int:
-		price = float64(v)
-	case string:
-		fmt.Sscanf(v, "%f", &price)
+	eventID := c.Param("eventId")
+	quantity := services.GetInt(body, "initialQuantity")
+	if quantity == 0 {
+		quantity = services.GetInt(body, "quantity")
+	}
+
+	// Group tickets from the staff app are VIP table types — the same table
+	// the WebApp sells as "Mesa Premium".
+	if services.GetBool(body, "isGroup") {
+		maxGuests := services.GetInt(body, "maxQuantity")
+		if maxGuests == 0 {
+			maxGuests = 10
+		}
+		payload := map[string]interface{}{
+			"event_id":       eventID,
+			"name":           services.GetString(body, "name"),
+			"description":    services.GetString(body, "benefits"),
+			"price_male":     services.GetFloat64(body, "malePrice"),
+			"price_female":   services.GetFloat64(body, "femalePrice"),
+			"currency":       "GTQ",
+			"quantity_total": quantity,
+			"max_guests":     maxGuests,
+		}
+		result, err := venueDB.InsertCtx(ctx, "event_vip_ticket_types", payload)
+		if err != nil || result == nil {
+			log.Printf("[Mobile/CreateTicketType] vip err=%v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create group ticket type", "details": fmt.Sprintf("%v", err)})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": result})
+		return
+	}
+
+	minPer := services.GetInt(body, "minQuantity")
+	if minPer == 0 {
+		minPer = 1
+	}
+	maxPer := services.GetInt(body, "maxQuantity")
+	if maxPer == 0 {
+		maxPer = 10
+	}
+	metadata := map[string]interface{}{}
+	if services.GetBool(body, "hasGenderPricing") {
+		metadata["has_gender_pricing"] = true
+		metadata["male_price"] = services.GetFloat64(body, "malePrice")
+		metadata["female_price"] = services.GetFloat64(body, "femalePrice")
+	}
+	if v, ok := body["expenses"]; ok && v != nil {
+		metadata["expenses"] = services.GetFloat64(body, "expenses")
 	}
 	payload := map[string]interface{}{
-		"event_id":  c.Param("eventId"),
-		"name":      services.GetString(body, "name"),
-		"price":     price,
-		"quantity":  services.GetInt(body, "quantity"),
-		"benefits":  services.GetString(body, "benefits"),
-		"is_active": true,
+		"event_id":       eventID,
+		"name":           services.GetString(body, "name"),
+		"price":          services.GetFloat64(body, "price"),
+		"quantity_total": quantity,
+		"benefits":       splitBenefits(services.GetString(body, "benefits")),
+		"min_per_order":  minPer,
+		"max_per_order":  maxPer,
+		"is_active":      true,
+		"is_visible":     true,
+		"metadata":       metadata,
 	}
 	result, err := venueDB.InsertCtx(ctx, "ticket_types", payload)
 	if err != nil || result == nil {
@@ -1292,40 +1565,92 @@ func MobileUpdateTicketType(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
 		return
 	}
+	ticketTypeID := c.Param("ticketTypeId")
+
+	// Build the updates for a regular ticket_types row.
 	updates := map[string]interface{}{}
-	for _, k := range []string{"name", "benefits", "is_active"} {
-		if v, ok := body[k]; ok {
-			updates[k] = v
+	if v, ok := body["name"]; ok {
+		updates["name"] = v
+	}
+	if v, ok := body["is_active"]; ok {
+		updates["is_active"] = v
+	}
+	if _, ok := body["benefits"]; ok {
+		updates["benefits"] = splitBenefits(services.GetString(body, "benefits"))
+	}
+	if _, ok := body["price"]; ok {
+		updates["price"] = services.GetFloat64(body, "price")
+	}
+	if _, ok := body["initialQuantity"]; ok {
+		updates["quantity_total"] = services.GetInt(body, "initialQuantity")
+	} else if _, ok := body["quantity"]; ok {
+		updates["quantity_total"] = services.GetInt(body, "quantity")
+	}
+	if _, ok := body["minQuantity"]; ok {
+		if v := services.GetInt(body, "minQuantity"); v > 0 {
+			updates["min_per_order"] = v
 		}
 	}
-	if v, ok := body["price"]; ok {
-		switch p := v.(type) {
-		case float64:
-			updates["price"] = p
-		case int:
-			updates["price"] = float64(p)
-		case string:
-			var f float64
-			fmt.Sscanf(p, "%f", &f)
-			updates["price"] = f
+	if _, ok := body["maxQuantity"]; ok {
+		if v := services.GetInt(body, "maxQuantity"); v > 0 {
+			updates["max_per_order"] = v
 		}
 	}
-	if v, ok := body["quantity"]; ok {
-		updates["quantity"] = v
+	if services.GetBool(body, "hasGenderPricing") || services.GetBool(body, "isGroup") {
+		updates["metadata"] = map[string]interface{}{
+			"is_group":           services.GetBool(body, "isGroup"),
+			"has_gender_pricing": services.GetBool(body, "hasGenderPricing"),
+			"male_price":         services.GetFloat64(body, "malePrice"),
+			"female_price":       services.GetFloat64(body, "femalePrice"),
+		}
 	}
 	if len(updates) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "no updates supplied"})
 		return
 	}
 	result, err := venueDB.UpdateCtx(ctx, "ticket_types", updates, map[string]interface{}{
-		"id": c.Param("ticketTypeId"),
+		"id": ticketTypeID,
 	})
-	if err != nil || len(result) == 0 {
-		log.Printf("[Mobile/UpdateTicketType] err=%v rows=%d", err, len(result))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ticket type"})
+	if err == nil && len(result) > 0 {
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": result[0]})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true, "data": result[0]})
+
+	// No ticket_types row matched — the id may be a VIP table type (surfaced
+	// as a group ticket in the app). Retry against event_vip_ticket_types.
+	vipUpdates := map[string]interface{}{}
+	if v, ok := body["name"]; ok {
+		vipUpdates["name"] = v
+	}
+	if _, ok := body["benefits"]; ok {
+		vipUpdates["description"] = services.GetString(body, "benefits")
+	}
+	if _, ok := body["malePrice"]; ok {
+		vipUpdates["price_male"] = services.GetFloat64(body, "malePrice")
+	}
+	if _, ok := body["femalePrice"]; ok {
+		vipUpdates["price_female"] = services.GetFloat64(body, "femalePrice")
+	}
+	if _, ok := body["initialQuantity"]; ok {
+		vipUpdates["quantity_total"] = services.GetInt(body, "initialQuantity")
+	}
+	if _, ok := body["maxQuantity"]; ok {
+		if v := services.GetInt(body, "maxQuantity"); v > 0 {
+			vipUpdates["max_guests"] = v
+		}
+	}
+	if len(vipUpdates) > 0 {
+		vipResult, vipErr := venueDB.UpdateCtx(ctx, "event_vip_ticket_types", vipUpdates, map[string]interface{}{
+			"id": ticketTypeID,
+		})
+		if vipErr == nil && len(vipResult) > 0 {
+			c.JSON(http.StatusOK, gin.H{"success": true, "data": vipResult[0]})
+			return
+		}
+	}
+
+	log.Printf("[Mobile/UpdateTicketType] err=%v rows=%d id=%s", err, len(result), ticketTypeID)
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ticket type"})
 }
 
 // MobileDeleteTicketType handles DELETE /ticket-types/:ticketTypeId.
@@ -1338,13 +1663,25 @@ func MobileDeleteTicketType(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid venue"})
 		return
 	}
+	ticketTypeID := c.Param("ticketTypeId")
 	result, err := venueDB.UpdateCtx(ctx, "ticket_types", map[string]interface{}{
 		"is_active": false,
-	}, map[string]interface{}{"id": c.Param("ticketTypeId")})
-	if err != nil || len(result) == 0 {
-		log.Printf("[Mobile/DeleteTicketType] err=%v rows=%d", err, len(result))
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete ticket type"})
+	}, map[string]interface{}{"id": ticketTypeID})
+	if err == nil && len(result) > 0 {
+		c.JSON(http.StatusOK, gin.H{"success": true})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"success": true})
+
+	// Not a ticket_types row — try the VIP table types surfaced as group
+	// tickets. That table has no is_active column, so delete the row; the FK
+	// from reservations blocks the delete if the type is already in use.
+	if vipErr := venueDB.DeleteCtx(ctx, "event_vip_ticket_types", map[string]interface{}{
+		"id": ticketTypeID,
+	}); vipErr == nil {
+		c.JSON(http.StatusOK, gin.H{"success": true})
+		return
+	} else {
+		log.Printf("[Mobile/DeleteTicketType] err=%v vipErr=%v id=%s", err, vipErr, ticketTypeID)
+	}
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete ticket type"})
 }

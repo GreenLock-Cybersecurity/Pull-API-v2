@@ -6,42 +6,40 @@ Priority-ordered. First bug that surfaces is likely to be in the top block.
 
 ## P0 — verify next time you open the mobile app
 
-- [ ] **Reload the mobile app WITHOUT logging out.** Should hit `/auth/verify-token`,
-      get `{type:"jwt", claims:{...}}`, rehydrate `user`, then load Eventos.
-      If it still shows nothing, `flyctl logs` for the last request-id.
-- [ ] **EventoDetalle** — after the shape unwrap, verify image, name,
-      date, description, ticket list, guest list list, group section
-      all render.
+- [x] **Reload the mobile app WITHOUT logging out.** VERIFIED on expo-web
+      (2026-07-09): rehydrates via verify-token and loads Eventos. BUT it
+      surfaced an open issue: claims carry `use_vip_list_flow=true` (stale
+      central config?) so the app flips to VIP mode after reload while a
+      fresh login stays in regular mode. See HANDOFF bug #20 — decide and
+      PATCH the central venues row.
+- [x] **EventoDetalle** — VERIFIED (2026-07-09): image, name, date,
+      description, tickets with availability, groups (Mesa Premium/VIP
+      Lounge with M/F prices from event_vip_ticket_types) and guest lists
+      all render. Required HANDOFF fixes #13-14.
 - [ ] **Orders tab** — default filter is `status=pending`. Aurora demo has
       3 pending orders visible last check; if you see "no orders" try
       changing the filter chip to Confirmed or All.
 
 ## P1 — pending screens I never got to touch
 
-- [ ] **EventoNuevo (crear evento)**
-  - Backend endpoint: `POST /event/create-event-with-tickets` — DEPLOYED.
-  - Payload contract: `{name, description, image, event_date, start_time,
-    end_time, ticket_limit, dress_code, min_age, custom_location,
-    ticket_types:[{name, price, quantity, benefits}], table_capacity?}`.
-  - Response: `{success, event_id, event, ticket_types}`.
-  - Not tested end-to-end from UI. Likely first bug: image upload flow
-    (`POST /upload/event-image` is a stub — returns a placeholder
-    Unsplash URL; not persisted).
-- [ ] **EventoEditar (editar evento)**
-  - Endpoint: `PUT /event/update-event/:eventId`.
-  - Accepts subset of the create payload (any of name/description/image/
-    dress_code/custom_location/status/deleted_at/min_age/ticket_limit/
-    table_capacity/event_date+start_time+end_time).
-  - Not tested from UI.
-- [ ] **Borrar evento** — `DELETE /event/delete-event/:eventId`. Soft delete
-      (`status="cancelled", deleted_at=now`). To undelete: `PUT` with
+- [~] **EventoNuevo (crear evento)** — backend contract VERIFIED via API
+      (2026-07-09) after HANDOFF fix #15 (the endpoint had never worked:
+      phantom columns). Creates as `published` now. UI wizard still not
+      driven end-to-end: the required image picker opens a native file
+      dialog (untestable from web preview) and `POST /upload/event-image`
+      is still a stub returning a placeholder Unsplash URL.
+- [x] **EventoEditar (editar evento)** — VERIFIED from UI (2026-07-09) on a
+      throwaway event: name/description/dress_code persisted via
+      `PUT /event/update-event/:eventId`. Needed HANDOFF fixes #15-16
+      (`custom_location→location`, `table_capacity` not a column). Note:
+      in VIP mode the form requires tableCount > 0 and web's silent
+      Alert.alert made validation failures invisible.
+- [x] **Borrar evento** — VERIFIED via API (2026-07-09) on the throwaway
+      event: soft delete works, list stays clean. Undelete: `PUT` with
       `{status:"published", deleted_at:null}`.
-- [ ] **TicketsGestion** — presumably lists/adds/edits/deletes tickets on
-      an event. Endpoints deployed:
-  - `GET /ticket-types/event/:eventId`
-  - `POST /ticket-types/event/:eventId`
-  - `PUT /ticket-types/:ticketTypeId`
-  - `DELETE /ticket-types/:ticketTypeId` (soft delete: is_active=false).
+- [x] **TicketsGestion** — VERIFIED (2026-07-09): UI lists tickets with
+      availability and the VIP pricing form saves; full CRUD (regular +
+      group/VIP-table) exercised via API. Needed HANDOFF fixes #13-14.
 - [ ] **EmpleadoNuevo (crear staff)** — I NEVER added `POST /employees/create`
       or `PUT/DELETE`. Currently we only have `GET /employees/employees`
       and `GET /employees/employees/:id`. Add these when someone actually
@@ -51,9 +49,27 @@ Priority-ordered. First bug that surfaces is likely to be in the top block.
 - [ ] **GroupReservaDetalle** — shape unverified.
 - [ ] **GuestListDetalle** — likely calls `GET /guest-lists/signup/:signupId`
       which already exists in `main.go:448`. Verify shape matches.
-- [ ] **VIPListDetalle**, **VIPListNuevo** — VIP list flow is the "mesa"
-      variant. `POST /guest-lists/types` already exists. Verify what the
-      screens actually call vs. what's registered.
+- [x] **Guest list types CRUD (Lists modal/screen)** — VERIFIED via the
+      mobile endpoints (2026-07-09): POST/PUT/DELETE + GET aliases. The
+      handlers were written against an imaginary schema and PUT/DELETE
+      also read the wrong route param — see HANDOFF bug #17. GET rendering
+      verified in UI (Latin Vibes shows both lists).
+- [x] **Flujos de aprobación (2026-07-09)** — verificados end-to-end en local:
+      order approve ahora corre el pipeline completo (tickets + email QR/PDF),
+      order reject arreglado (columna rejected_by no existe), group approve
+      envía email con el link de pago (`group_reservation_approved.html`),
+      y los endpoints por-invitado (`/group-reservations/guest/:id`,
+      `/complete`, `/pay`) se implementaron — no existían y la página web de
+      "completar datos y pagar" estaba 404. Tracking page enriquecida
+      (status_id 7, totales, aliases). Ver HANDOFF #21-25. **PENDIENTE:
+      deploy a Fly + push de los repos.**
+- [ ] **P0 dato central**: `venues.use_vip_list_flow=true` para Aurora es
+      config stale — el producto retiró ese flujo. La app ya lo ignora
+      (forzado false en authService), pero hay que corregir el dato:
+      `PATCH <central>/rest/v1/venues?id=eq.8450e956-... {"use_vip_list_flow": false}`.
+- [ ] ~~**VIPListDetalle**, **VIPListNuevo**~~ — RETIRADO (2026-07-09): el
+      flujo VIP list ya no se usa como producto. Las pantallas VIPList* del
+      móvil quedan muertas; candidatas a borrarse en una limpieza futura.
 - [ ] **Scanner QR** — real test needs a real ticket QR. Buy a ticket
       via WebApp, receive PDF via Brevo, open PDF, scan QR with mobile
       Scanner tab. `POST /ticket-validation/validate-ticket` returns

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"pull-api-v2/middleware"
 	"pull-api-v2/services"
 	"strings"
 	"sync"
@@ -1407,10 +1408,10 @@ func LegacyCreateGroupReservation(c *gin.Context) {
 		defer bgCancel()
 		if services.Email != nil {
 			services.Email.SendGroupReservationConfirmation(bgCtx, services.GroupReservationEmailData{
-				To:               req.OrganizerData.Email,
-				OrganizerName:    req.OrganizerData.Name,
-				EventName:        services.GetString(event, "name"),
-				EventDate:        services.GetString(event, "event_date"),
+				To:                req.OrganizerData.Email,
+				OrganizerName:     req.OrganizerData.Name,
+				EventName:         services.GetString(event, "name"),
+				EventDate:         services.GetString(event, "event_date"),
 				ReservationNumber: "GRP-" + managementCode,
 				ManagementCode:    managementCode,
 				PaymentLinkCode:   paymentLinkCode,
@@ -1464,11 +1465,11 @@ func LegacyTrackGroupReservation(c *gin.Context) {
 		"select": "*", "where": map[string]interface{}{"reservation_id": resvID},
 	})
 
-	// Look up event image for the tracking UI.
+	// Look up event context for the tracking UI.
 	eventImage := ""
 	if eid := services.GetString(resv, "event_id"); eid != "" {
 		ev, _ := venueDB.QueryOne(ctx, "events", map[string]interface{}{
-			"select": "image,cover_image,name",
+			"select": "image,cover_image,name,start_datetime,end_datetime,location",
 			"where":  map[string]interface{}{"id": eid},
 		})
 		if ev != nil {
@@ -1476,6 +1477,10 @@ func LegacyTrackGroupReservation(c *gin.Context) {
 			if eventImage == "" {
 				eventImage = services.GetString(ev, "cover_image")
 			}
+			services.EnrichEvent(ev)
+			resv["event_name"] = services.GetString(ev, "name")
+			resv["event_date"] = services.GetString(ev, "event_date")
+			resv["venue_name"] = services.GetString(ev, "location")
 		}
 	}
 
@@ -1484,6 +1489,31 @@ func LegacyTrackGroupReservation(c *gin.Context) {
 	}
 	if bottles == nil {
 		bottles = []map[string]interface{}{}
+	}
+	pendingAmount := 0.0
+	for _, g := range guests {
+		enrichGroupGuest(g)
+		if !services.GetBool(g, "has_paid") {
+			pendingAmount += services.GetFloat64(g, "ticket_price")
+		}
+	}
+
+	// Aliases the tracking page reads on the reservation object. status_id is
+	// the legacy numeric status: the page treats 7/8 as "approved" and
+	// anything else as still waiting for the venue.
+	resv["guest_count"] = len(guests)
+	if len(guests) == 0 {
+		resv["guest_count"] = services.GetInt(resv, "max_guests")
+	}
+	resv["total_amount"] = services.GetFloat64(resv, "total")
+	resv["pending_amount"] = pendingAmount
+	switch services.GetString(resv, "status") {
+	case "confirmed", "closed", "completed":
+		resv["status_id"] = 7
+	case "cancelled":
+		resv["status_id"] = 9
+	default:
+		resv["status_id"] = 1
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -1494,6 +1524,252 @@ func LegacyTrackGroupReservation(c *gin.Context) {
 		"mixers":      []map[string]interface{}{},
 		"event_image": eventImage,
 	})
+}
+
+// enrichGroupGuest adds the aliases the WebApp tracking / guest-complete
+// pages read on top of the raw vip_list_guests row:
+//
+//	ticket_price            -> amount_due
+//	has_paid && !paid_at    -> host_pays (paid by the organizer at creation)
+//	verification_code       -> "" (schema has no such column; the guest flow
+//	                          works by unguessable guest UUID instead)
+func enrichGroupGuest(g map[string]interface{}) {
+	if g == nil {
+		return
+	}
+	g["amount_due"] = services.GetFloat64(g, "ticket_price")
+	g["host_pays"] = services.GetBool(g, "has_paid") && services.GetString(g, "paid_at") == ""
+	if _, ok := g["verification_code"]; !ok {
+		g["verification_code"] = ""
+	}
+}
+
+// findGroupGuest loads a vip_list_guests row by id on the demo venue DB.
+func findGroupGuest(ctx context.Context, guestID string) (*services.SupabaseClient, map[string]interface{}) {
+	central := services.DB.Central()
+	venue, _ := central.QueryOne(ctx, "venues", map[string]interface{}{
+		"select": "id", "where": map[string]interface{}{"is_active": true, "deleted_at": "is.null"}, "limit": 1,
+	})
+	if venue == nil {
+		return nil, nil
+	}
+	venueDB := services.DB.ForVenue(services.GetString(venue, "id"))
+	if venueDB == nil {
+		return nil, nil
+	}
+	guest, _ := venueDB.QueryOne(ctx, "vip_list_guests", map[string]interface{}{
+		"select": "*", "where": map[string]interface{}{"id": guestID},
+	})
+	return venueDB, guest
+}
+
+// groupGuestContext resolves the reservation + event for a guest row and the
+// shared payment link code.
+func groupGuestContext(ctx context.Context, venueDB *services.SupabaseClient, guest map[string]interface{}) (resv, event map[string]interface{}, code string) {
+	resv, _ = venueDB.QueryOne(ctx, "vip_list_reservations", map[string]interface{}{
+		"select": "*", "where": map[string]interface{}{"id": services.GetString(guest, "reservation_id")},
+	})
+	if resv == nil {
+		return nil, nil, ""
+	}
+	code = strings.TrimPrefix(services.GetString(resv, "reservation_number"), "GRP-")
+	event, _ = venueDB.QueryOne(ctx, "events", map[string]interface{}{
+		"select": "id,name,start_datetime,end_datetime,image,cover_image,min_age",
+		"where":  map[string]interface{}{"id": services.GetString(resv, "event_id")},
+	})
+	if event != nil {
+		services.EnrichEvent(event)
+	}
+	return resv, event, code
+}
+
+// nextActionForGuest decides which screen the guest-complete page shows.
+func nextActionForGuest(guest map[string]interface{}) string {
+	hasPaid := services.GetBool(guest, "has_paid")
+	hostPays := hasPaid && services.GetString(guest, "paid_at") == ""
+	dataComplete := services.GetString(guest, "email") != "" && services.GetString(guest, "phone") != ""
+	switch {
+	case hasPaid && !hostPays && dataComplete:
+		return "ticket_ready"
+	case hostPays && !dataComplete:
+		return "complete_data"
+	case hostPays && dataComplete:
+		return "ticket_ready"
+	case dataComplete:
+		return "pay"
+	default:
+		return "complete_data_then_pay"
+	}
+}
+
+// LegacyGetGroupGuest handles GET /group-reservations/guest/:guestId.
+// Feeds the WebApp guest-complete page (each member fills their data and
+// pays their share from the shared tracking link).
+func LegacyGetGroupGuest(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+	venueDB, guest := findGroupGuest(ctx, c.Param("guestId"))
+	if guest == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Guest not found"})
+		return
+	}
+	resv, event, code := groupGuestContext(ctx, venueDB, guest)
+	if resv == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Reservation not found"})
+		return
+	}
+	enrichGroupGuest(guest)
+
+	eventPayload := map[string]interface{}{}
+	if event != nil {
+		eventPayload = map[string]interface{}{
+			"name":       services.GetString(event, "name"),
+			"event_name": services.GetString(event, "name"),
+			"event_date": services.GetString(event, "event_date"),
+			"start_time": services.GetString(event, "start_time"),
+			"image":      services.GetString(event, "image"),
+			"min_age":    event["min_age"],
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"guest":             guest,
+		"event":             eventPayload,
+		"reservation":       resv,
+		"next_action":       nextActionForGuest(guest),
+		"payment_link_code": code,
+		// The demo flow relies on unguessable guest UUIDs; no access code.
+		"requires_access_code": false,
+	})
+}
+
+// LegacyCompleteGroupGuest handles POST /group-reservations/guest/:guestId/complete.
+func LegacyCompleteGroupGuest(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 10*time.Second)
+	defer cancel()
+	var req struct {
+		Name        string `json:"name"`
+		LastName    string `json:"last_name"`
+		Email       string `json:"email"`
+		Gender      string `json:"gender"`
+		Phone       string `json:"phone"`
+		PhonePrefix string `json:"phone_prefix"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+	venueDB, guest := findGroupGuest(ctx, c.Param("guestId"))
+	if guest == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Guest not found"})
+		return
+	}
+
+	updates := map[string]interface{}{}
+	if req.Name != "" {
+		updates["name"] = middleware.SanitizeName(req.Name)
+	}
+	if req.LastName != "" {
+		updates["last_name"] = middleware.SanitizeName(req.LastName)
+	}
+	if req.Email != "" {
+		updates["email"] = middleware.SanitizeEmail(req.Email)
+	}
+	if req.Gender != "" {
+		updates["gender"] = req.Gender
+	}
+	if req.Phone != "" {
+		prefix := strings.TrimSpace(req.PhonePrefix)
+		updates["phone"] = strings.TrimSpace(prefix + req.Phone)
+	}
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No data supplied"})
+		return
+	}
+	result, err := venueDB.UpdateCtx(ctx, "vip_list_guests", updates, map[string]interface{}{
+		"id": services.GetString(guest, "id"),
+	})
+	if err != nil || len(result) == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save guest data"})
+		return
+	}
+	enrichGroupGuest(result[0])
+	c.JSON(http.StatusOK, gin.H{
+		"success":     true,
+		"guest":       result[0],
+		"next_action": nextActionForGuest(result[0]),
+	})
+}
+
+// LegacyPayGroupGuest handles POST /group-reservations/guest/:guestId/pay.
+// DEMO_MODE: the payment is simulated — the guest is marked paid instantly.
+func LegacyPayGroupGuest(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
+	defer cancel()
+	venueDB, guest := findGroupGuest(ctx, c.Param("guestId"))
+	if guest == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Guest not found"})
+		return
+	}
+	if services.GetBool(guest, "has_paid") && services.GetString(guest, "paid_at") != "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Este invitado ya pagó su parte"})
+		return
+	}
+
+	result, err := venueDB.UpdateCtx(ctx, "vip_list_guests", map[string]interface{}{
+		"has_paid": true,
+		"paid_at":  time.Now().Format(time.RFC3339),
+	}, map[string]interface{}{"id": services.GetString(guest, "id")})
+	if err != nil || len(result) == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to process payment"})
+		return
+	}
+	paid := result[0]
+
+	resv, event, code := groupGuestContext(ctx, venueDB, paid)
+
+	// Keep the reservation's paid-guest counter in sync (best effort).
+	if resv != nil {
+		if all, _ := venueDB.QueryCtx(ctx, "vip_list_guests", map[string]interface{}{
+			"select": "id,has_paid",
+			"where":  map[string]interface{}{"reservation_id": services.GetString(resv, "id")},
+		}); len(all) > 0 {
+			count := 0
+			for _, g := range all {
+				if services.GetBool(g, "has_paid") {
+					count++
+				}
+			}
+			venueDB.UpdateNoReturn(ctx, "vip_list_reservations", map[string]interface{}{
+				"confirmed_guests": count,
+			}, map[string]interface{}{"id": services.GetString(resv, "id")})
+		}
+	}
+
+	eventName, eventDate, eventImage := "", "", ""
+	if event != nil {
+		eventName = services.GetString(event, "name")
+		eventDate = services.GetString(event, "event_date")
+		eventImage = services.GetString(event, "image")
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success":           true,
+		"guest_email":       services.GetString(paid, "email"),
+		"guest_name":        strings.TrimSpace(services.GetString(paid, "name") + " " + services.GetString(paid, "last_name")),
+		"event_name":        eventName,
+		"event_date":        eventDate,
+		"event_image":       eventImage,
+		"amount_paid":       services.GetFloat64(paid, "ticket_price"),
+		"payment_link_code": code,
+	})
+}
+
+// LegacyVerifyGroupGuestAccessCode handles
+// POST /group-reservations/guest/:guestId/verify-access-code. The demo does
+// not use access codes (requires_access_code is always false), but the page
+// keeps the call path — accept anything.
+func LegacyVerifyGroupGuestAccessCode(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"valid": true})
 }
 
 // nullableEnum returns nil for empty strings (the schema enums reject "").
@@ -1535,5 +1811,38 @@ func LegacyGetOrderDetails(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Order not found"})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"order": order, "venue_id": venueID})
+
+	// The mobile ReservaDetalle screen reads nested `user` and `event`
+	// objects alongside the raw order row.
+	name := services.GetString(order, "user_name")
+	surname := ""
+	if parts := strings.SplitN(name, " ", 2); len(parts) == 2 {
+		name, surname = parts[0], parts[1]
+	}
+	user := map[string]interface{}{
+		"name":    name,
+		"surname": surname,
+		"email":   services.GetString(order, "user_email"),
+		"phone":   services.GetString(order, "user_phone"),
+	}
+
+	event := map[string]interface{}{}
+	if eid := services.GetString(order, "event_id"); eid != "" {
+		if ev, _ := venueDB.QueryOne(ctx, "events", map[string]interface{}{
+			"select": "id,name,start_datetime,end_datetime,image,location",
+			"where":  map[string]interface{}{"id": eid},
+		}); ev != nil {
+			services.EnrichEvent(ev)
+			event = map[string]interface{}{
+				"id":         services.GetString(ev, "id"),
+				"name":       services.GetString(ev, "name"),
+				"event_date": services.GetString(ev, "event_date"),
+				"start_time": services.GetString(ev, "start_time"),
+				"image":      services.GetString(ev, "image"),
+				"location":   services.GetString(ev, "location"),
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"order": order, "user": user, "event": event, "venue_id": venueID})
 }
